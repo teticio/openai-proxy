@@ -2,7 +2,6 @@ import boto3
 import json
 import re
 from base64 import b64decode
-from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Iterator, Optional, Tuple, Union
 
