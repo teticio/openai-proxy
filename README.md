@@ -26,3 +26,4 @@ There are some extra functions provided in the `openai_proxy` package to allow y
 - Cache centrally in ElastiCache.
 - Dashboard to view usage.
 - Rate limits.
+- Handle streaming / async requests.
