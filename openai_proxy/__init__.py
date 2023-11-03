@@ -1,6 +1,5 @@
 import boto3
 import json
-import os
 from base64 import b64decode
 from types import SimpleNamespace
 from typing import Iterator, Optional, Tuple, Union
