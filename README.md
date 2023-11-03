@@ -25,3 +25,4 @@ There are some extra functions provided in the `openai_proxy` package to allow y
 - Limit spend of users / projects / models / staging environments.
 - Cache centrally in ElastiCache.
 - Dashboard to view usage.
+- Rate limits.
