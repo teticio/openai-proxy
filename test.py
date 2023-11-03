@@ -1,10 +1,9 @@
 # TODO
 # error handling
-# calculate usage cost
-# elasticache
-# log / control usage
+# control usage
 # add / remove users
 # dashboard
+# elasticache
 
 import openai_proxy as openai
 

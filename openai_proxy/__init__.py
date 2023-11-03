@@ -11,10 +11,7 @@ from openai.openai_response import OpenAIResponse
 
 cache = {}
 project = "N/A"
-lambda_client = boto3.client("lambda")
-sts_client = boto3.Session(
-    profile_name=os.environ.get("ROOT_AWS_PROFILE", "default")
-).client("sts")
+staging = "dev"
 
 
 def set_project(project_name: str):
@@ -22,9 +19,20 @@ def set_project(project_name: str):
     project = project_name
 
 
+def set_staging(staging_name: str):
+    global staging
+    staging = staging_name
+
+
 def clear_cache():
     global cache
     cache = {}
+
+
+lambda_client = boto3.client("lambda")
+sts_client = boto3.Session(
+    profile_name=os.environ.get("ROOT_AWS_PROFILE", "default")
+).client("sts")
 
 
 def request_proxy(
@@ -57,7 +65,7 @@ def request_proxy(
     result = SimpleNamespace(
         **json.loads(
             lambda_client.invoke(
-                FunctionName="openai-proxy",
+                FunctionName=f"openai-proxy-{staging}",
                 InvocationType="RequestResponse",
                 Payload=json.dumps(payload),
             )["Payload"].read()

@@ -27,18 +27,142 @@ provider "docker" {
   }
 }
 
-module "openai_proxy" {
-  source         = "terraform-aws-modules/lambda/aws"
-  function_name  = "openai-proxy"
-  create_package = false
-  image_uri      = module.docker_image.image_uri
-  package_type   = "Image"
-  architectures  = ["x86_64"]
-  timeout        = 30
+resource "aws_dynamodb_table" "openai_usage" {
+  name         = "openai-usage"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "composite_key"
 
-  environment_variables = {
-    OPENAI_API_KEY      = var.openai_api_key
-    OPENAI_ORGANIZATION = var.openai_organization
+  attribute {
+    name = "composite_key"
+    type = "S"
+  }
+
+  attribute {
+    name = "user"
+    type = "S"
+  }
+
+  attribute {
+    name = "project"
+    type = "S"
+  }
+
+  attribute {
+    name = "model"
+    type = "S"
+  }
+
+  attribute {
+    name = "staging"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "user-index"
+    hash_key        = "user"
+    write_capacity  = 1
+    read_capacity   = 1
+    projection_type = "KEYS_ONLY"
+  }
+
+  global_secondary_index {
+    name            = "project-index"
+    hash_key        = "project"
+    write_capacity  = 1
+    read_capacity   = 1
+    projection_type = "KEYS_ONLY"
+  }
+
+  global_secondary_index {
+    name            = "model-index"
+    hash_key        = "model"
+    write_capacity  = 1
+    read_capacity   = 1
+    projection_type = "KEYS_ONLY"
+  }
+
+  global_secondary_index {
+    name            = "staging-index"
+    hash_key        = "staging"
+    write_capacity  = 1
+    read_capacity   = 1
+    projection_type = "KEYS_ONLY"
+  }
+}
+
+resource "aws_iam_policy" "lambda_policy" {
+  name        = "LambdaDynamoDBPolicy"
+  description = "IAM policy for Lambda to access DynamoDB"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+        ],
+        Resource = aws_dynamodb_table.openai_usage.arn
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role" "lambda_role" {
+  name = "lambda_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = "sts:AssumeRole",
+        Effect = "Allow",
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        },
+      },
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_policy.arn
+}
+
+resource "aws_lambda_function" "openai_proxy_dev" {
+  function_name = "openai-proxy-dev"
+  role          = aws_iam_role.lambda_role.arn
+  image_uri     = module.docker_image.image_uri
+  package_type  = "Image"
+  timeout       = 30
+  publish       = true
+
+  environment {
+    variables = {
+      STAGING             = "dev"
+      OPENAI_API_KEY      = var.openai_api_key_dev
+      OPENAI_ORGANIZATION = var.openai_organization_dev
+    }
+  }
+}
+
+resource "aws_lambda_function" "openai_proxy_prod" {
+  function_name = "openai-proxy-prod"
+  role          = aws_iam_role.lambda_role.arn
+  image_uri     = module.docker_image.image_uri
+  package_type  = "Image"
+  timeout       = 30
+  publish       = true
+
+  environment {
+    variables = {
+      STAGING             = "prod"
+      OPENAI_API_KEY      = var.openai_api_key_prod
+      OPENAI_ORGANIZATION = var.openai_organization_prod
+    }
   }
 }
 
