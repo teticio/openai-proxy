@@ -91,7 +91,7 @@ resource "aws_dynamodb_table" "openai_usage" {
 }
 
 resource "aws_iam_policy" "lambda_policy" {
-  name        = "LambdaDynamoDBPolicy"
+  name        = "lambda-dynamodb-policy"
   description = "IAM policy for Lambda to access DynamoDB"
 
   policy = jsonencode({
