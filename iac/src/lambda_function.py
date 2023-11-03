@@ -27,7 +27,7 @@ def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
 
 
 def lambda_handler(event, context):
-    logger.info(f"principal_id: {event.get('principal_id')}")
+    logger.info(f"user: {event.get('user')}")
     logger.info(f"project: {event.get('project')}")
     requestor = APIRequestor()
     result = requestor.request_raw(

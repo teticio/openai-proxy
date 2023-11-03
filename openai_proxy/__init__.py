@@ -1,6 +1,6 @@
 import boto3
 import json
-import re
+import os
 from base64 import b64decode
 from types import SimpleNamespace
 from typing import Iterator, Optional, Tuple, Union
@@ -12,7 +12,9 @@ from openai.openai_response import OpenAIResponse
 cache = {}
 project = "N/A"
 lambda_client = boto3.client("lambda")
-sts = boto3.client("sts")
+sts_client = boto3.Session(
+    profile_name=os.environ.get("ROOT_AWS_PROFILE", "default")
+).client("sts")
 
 
 def set_project(project_name: str):
@@ -36,9 +38,7 @@ def request_proxy(
     request_id: Optional[str] = None,
     request_timeout: Optional[Union[float, Tuple[float, float]]] = None,
 ) -> Tuple[Union[OpenAIResponse, Iterator[OpenAIResponse]], bool, str]:
-    principal_id = re.search(
-        r"^([A-Z0-9]+):", sts.get_caller_identity()["UserId"]
-    ).group(1)
+    user = sts_client.get_caller_identity()["Arn"]
     key = json.dumps({"url": url, "params": params})
     if key in cache:
         return cache[key], False, self.api_key
@@ -51,7 +51,7 @@ def request_proxy(
         "stream": stream,
         "request_id": request_id,
         "request_timeout": request_timeout,
-        "principal_id": principal_id,
+        "user": user,
         "project": project,
     }
     result = SimpleNamespace(
