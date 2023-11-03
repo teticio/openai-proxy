@@ -20,6 +20,11 @@ def set_project(project_name: str):
     project = project_name
 
 
+def clear_cache():
+    global cache
+    cache = {}
+
+
 def request_proxy(
     self,
     method,
