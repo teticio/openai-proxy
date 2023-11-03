@@ -30,9 +30,11 @@ def clear_cache():
 
 
 lambda_client = boto3.client("lambda")
-sts_client = boto3.Session(
-    profile_name=os.environ.get("ROOT_AWS_PROFILE", "default")
-).client("sts")
+session = boto3.Session()
+profile = session._session.full_config["profiles"][session.profile_name]
+if "source_profile" in profile:
+    profile = profile["source_profile"]
+user = boto3.Session(profile_name=profile).client("sts").get_caller_identity()["Arn"]
 
 
 def request_proxy(
@@ -46,7 +48,6 @@ def request_proxy(
     request_id: Optional[str] = None,
     request_timeout: Optional[Union[float, Tuple[float, float]]] = None,
 ) -> Tuple[Union[OpenAIResponse, Iterator[OpenAIResponse]], bool, str]:
-    user = sts_client.get_caller_identity()["Arn"]
     key = json.dumps({"url": url, "params": params})
     if key in cache:
         return cache[key], False, self.api_key
