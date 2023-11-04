@@ -28,12 +28,22 @@ def clear_cache():
     cache = {}
 
 
+def get_user():
+    session = boto3.Session()
+    profile = None
+    profiles = session._session.full_config["profiles"]
+    if session.profile_name in profiles:
+        profile = session._session.full_config["profiles"][session.profile_name]
+        if "source_profile" in profile:
+            profile = profile["source_profile"]
+    user = (
+        boto3.Session(profile_name=profile).client("sts").get_caller_identity()["Arn"]
+    )
+    return user
+
+
+user = get_user()
 lambda_client = boto3.client("lambda")
-session = boto3.Session()
-profile = session._session.full_config["profiles"][session.profile_name]
-if "source_profile" in profile:
-    profile = profile["source_profile"]
-user = boto3.Session(profile_name=profile).client("sts").get_caller_identity()["Arn"]
 
 
 def request_proxy(

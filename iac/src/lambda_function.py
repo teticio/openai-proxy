@@ -93,6 +93,7 @@ def lambda_handler(event, context):
 
 
 if __name__ == "__main__":  # for testing
+    os.environ["STAGING"] = "dev"
     print(
         lambda_handler(
             {
