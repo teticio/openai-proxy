@@ -1,6 +1,6 @@
 # OpenAI Proxy
 
-A drop-in wrapper to the `openai` package that tracks cost per user, project, model and staging environment. It is built using serverless AWS services.
+A drop-in wrapper to the `openai` package that tracks cost per user, project, model and staging account. It is built using serverless AWS services.
 
 ## Usage
 
@@ -15,16 +15,15 @@ terraform apply -auto-approve
 This will create two Lambda functions (one for dev and one for prod) as well as a DynamoDB table to store the usage data. Then, if you `import openai_proxy as openai`, the API calls to OpenAI will be made via the appropriate Lambda function. This has several benefits:
 - The OpenAI API keys are hidden in the Lambda function and IAM permissions can be used to control who has access to what.
 - Fine-grained usage data is tracked in the DynamoDB table.
+- Limits can be set at project, model and user level for each staging account.
 - Responses from OpenAI are cached.
 
-There are some extra functions provided in the `openai_proxy` package to allow you to `set_project`, `set_staging` and `clear_cache`.
+There are some extra functions provided in the `openai_proxy` package to allow you to `set_project`, `set_staging` and `clear_cache`. For convenience, a `set_limits` function is provided for users with IAM permissions to run the `openai-admin-{stagging}` Lambda function.
 
 ## TODO
 
-- Error handling
-- Limit spend of users / projects / models / staging environments.
+- Make package installable.
 - Cache centrally in ElastiCache.
 - Dashboard to view usage.
 - Rate limits.
 - Handle streaming / async requests.
-- Translate to Rust if necessary.

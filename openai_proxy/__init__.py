@@ -81,6 +81,9 @@ def request_proxy(
             )["Payload"].read()
         )
     )
+    if hasattr(result, "errorMessage"):
+        exception = getattr(error, result.errorType, Exception)
+        raise exception(result.errorMessage + "\n" + "\n".join(result.stackTrace))
     result.content = b64decode(result.content)
     resp, got_stream = self._interpret_response(result, stream)
     if not got_stream:
@@ -91,3 +94,23 @@ def request_proxy(
 openai_orig.api_requestor.APIRequestor.request = request_proxy
 __all__ = [name for name in dir(openai_orig) if not name.startswith("_")]
 globals().update({name: getattr(openai_orig, name) for name in __all__})
+
+
+def set_limit(
+    limit: float, staging: str, project: str, model: str = "*", user: str = "*"
+):
+    payload = {
+        "project": project,
+        "user": user,
+        "model": model,
+        "limit": limit,
+    }
+    result = json.loads(
+        lambda_client.invoke(
+            FunctionName=f"openai-admin-{staging}",
+            InvocationType="RequestResponse",
+            Payload=json.dumps(payload),
+        )["Payload"].read()
+    )
+    if "errorMessage" in result:
+        raise Exception(result["errorMessage"] + "\n" + "\n".join(result["stackTrace"]))

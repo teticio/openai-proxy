@@ -135,7 +135,7 @@ resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
 resource "aws_lambda_function" "openai_proxy_dev" {
   function_name = "openai-proxy-dev"
   role          = aws_iam_role.lambda_role.arn
-  image_uri     = module.docker_image.image_uri
+  image_uri     = module.openai_proxy.image_uri
   package_type  = "Image"
   timeout       = 30
   publish       = true
@@ -152,7 +152,7 @@ resource "aws_lambda_function" "openai_proxy_dev" {
 resource "aws_lambda_function" "openai_proxy_prod" {
   function_name = "openai-proxy-prod"
   role          = aws_iam_role.lambda_role.arn
-  image_uri     = module.docker_image.image_uri
+  image_uri     = module.openai_proxy.image_uri
   package_type  = "Image"
   timeout       = 30
   publish       = true
@@ -166,17 +166,78 @@ resource "aws_lambda_function" "openai_proxy_prod" {
   }
 }
 
-module "docker_image" {
+resource "aws_lambda_function" "openai_admin_dev" {
+  function_name = "openai-admin-dev"
+  role          = aws_iam_role.lambda_role.arn
+  image_uri     = module.openai_admin.image_uri
+  package_type  = "Image"
+  timeout       = 30
+  publish       = true
+
+  environment {
+    variables = {
+      STAGING = "dev"
+    }
+  }
+}
+
+resource "aws_lambda_function" "openai_admin_prod" {
+  function_name = "openai-admin-prod"
+  role          = aws_iam_role.lambda_role.arn
+  image_uri     = module.openai_admin.image_uri
+  package_type  = "Image"
+  timeout       = 30
+  publish       = true
+
+  environment {
+    variables = {
+      STAGING = "prod"
+    }
+  }
+}
+
+module "openai_proxy" {
   source          = "terraform-aws-modules/lambda/aws//modules/docker-build"
   create_ecr_repo = true
   ecr_repo        = "openai-proxy"
-  source_path     = "${path.module}/src"
+  source_path     = "${path.module}/openai_proxy"
   platform        = "linux/amd64"
 
   image_tag = sha1(join("", [
-    filesha1("${path.module}/src/requirements.txt"),
-    filesha1("${path.module}/src/lambda_function.py"),
-    filesha1("${path.module}/Dockerfile")
+    filesha1("${path.module}/openai_proxy/requirements.txt"),
+    filesha1("${path.module}/openai_proxy/lambda_function.py"),
+    filesha1("${path.module}/openai_proxy/Dockerfile")
+  ]))
+
+  ecr_repo_lifecycle_policy = jsonencode({
+    "rules" : [
+      {
+        "rulePriority" : 1,
+        "description" : "Keep only the last 1 image",
+        "selection" : {
+          "tagStatus" : "any",
+          "countType" : "imageCountMoreThan",
+          "countNumber" : 1
+        },
+        "action" : {
+          "type" : "expire"
+        }
+      }
+    ]
+  })
+}
+
+module "openai_admin" {
+  source          = "terraform-aws-modules/lambda/aws//modules/docker-build"
+  create_ecr_repo = true
+  ecr_repo        = "openai-admin"
+  source_path     = "${path.module}/openai_admin"
+  platform        = "linux/amd64"
+
+  image_tag = sha1(join("", [
+    filesha1("${path.module}/openai_admin/requirements.txt"),
+    filesha1("${path.module}/openai_admin/lambda_function.py"),
+    filesha1("${path.module}/openai_admin/Dockerfile")
   ]))
 
   ecr_repo_lifecycle_policy = jsonencode({
