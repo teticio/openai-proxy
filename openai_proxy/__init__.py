@@ -1,19 +1,21 @@
+import importlib
 import json
 import logging
 import os
+import sys
 from base64 import b64decode, b64encode
 from types import SimpleNamespace
 from typing import Any, Type, TypeVar
 
 import boto3
 import httpx
-import openai as openai_orig
-from openai import *
+from openai._exceptions import APIConnectionError, APITimeoutError
 from openai._models import FinalRequestOptions
 from openai._streaming import Stream
 from openai._types import ResponseT
 from packaging import version
 
+openai_orig = importlib.import_module("openai")
 assert version.parse(openai_orig.__version__) >= version.parse("1.1.1")
 
 os.environ["OPENAI_API_KEY"] = "XXX"
@@ -165,10 +167,10 @@ def _send(request, auth, stream):
     return response
 
 
+# monkey patch
 openai_orig._base_client.SyncAPIClient._request = _request_proxy
-__all__ = [name for name in dir(openai_orig) if not name.startswith("_")]
-globals().update({name: getattr(openai_orig, name) for name in __all__})
-
+globals().update(vars(openai_orig))
+sys.modules['openai'] = sys.modules['openai_proxy']
 
 def set_limit(
     limit: float, staging: str, project: str, model: str = "*", user: str = "*"
