@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import boto3
 import httpx
-from httpx import Headers, Limits, Request, Timeout, URL
+from httpx import URL, Headers, Limits, Request, Timeout
 from pymemcache.client.base import Client
 
 TTL = 60 * 60 * 24  # 1 day
@@ -81,6 +81,8 @@ def lambda_handler(event, context):
     staging = os.environ["STAGING"]
     content = b64decode(event["content"]).decode()
     headers = event["headers"]
+    headers["authorization"] = f'Bearer {os.getenv("OPENAI_API_KEY")}'
+    headers["openai-organization"] = f'{os.getenv("OPENAI_ORGANIZATION")}'
     model = (
         headers["openai-model"]
         if "openai-model" in headers
@@ -194,9 +196,7 @@ if __name__ == "__main__":  # for testing
                     ),
                     "headers": {
                         "content-type": "application/json",
-                        "authorization": f'Bearer {os.getenv("OPENAI_API_KEY")}',
                         "openai-model": "gpt-3.5-turbo-0613",
-                        "openai-organization": f'{os.getenv("OPENAI_ORGANIZATION")}',
                     },
                     "project": "hello",
                     "user": "fulano",

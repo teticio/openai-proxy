@@ -1,7 +1,7 @@
 import json
 import logging
-from base64 import b64encode, b64decode
-from packaging import version
+import os
+from base64 import b64decode, b64encode
 from types import SimpleNamespace
 from typing import Any, Type, TypeVar
 
@@ -9,11 +9,14 @@ import boto3
 import httpx
 import openai as openai_orig
 from openai import *
-from openai._streaming import Stream
 from openai._models import FinalRequestOptions
+from openai._streaming import Stream
 from openai._types import ResponseT
+from packaging import version
 
 assert version.parse(openai_orig.__version__) >= version.parse("1.1.1")
+
+os.environ["OPENAI_API_KEY"] = "XXX"
 
 project = "N/A"
 staging = "dev"
