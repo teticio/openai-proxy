@@ -1,12 +1,13 @@
 import hashlib
 import json
 import os
-from base64 import b64encode
+from base64 import b64decode, b64encode
 from datetime import datetime
 from decimal import Decimal
 
 import boto3
-from openai.api_requestor import APIRequestor
+import httpx
+from httpx import Headers, Limits, Request, Timeout, URL
 from pymemcache.client.base import Client
 
 TTL = 60 * 60 * 24  # 1 day
@@ -24,8 +25,6 @@ prices = {
 
 
 def calculate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
-    if model not in prices:
-        model = model[: model.rfind("-")]
     price = prices.get(model, (0, 0))
     cost = price[0] * input_tokens / 1000 + price[1] * output_tokens / 1000
     return cost
@@ -77,17 +76,22 @@ def update_usage(user, project, model, staging, cost):
 
 
 def lambda_handler(event, context):
-    user = event.get("user")
-    project = event.get("project")
-    params = event.get("params")
-    model = params.get("model")
+    user = event["user"]
+    project = event.get("project", "N/A")
     staging = os.environ["STAGING"]
+    content = b64decode(event["content"]).decode()
+    headers = event["headers"]
+    model = (
+        headers["openai-model"]
+        if "openai-model" in headers
+        else json.loads(content)["model"]
+    )
+    if model not in prices:
+        model = model[: model.rfind("-")]
 
     if client is not None and "nocache" not in event:
         hash_object = hashlib.sha256()
-        hash_object.update(
-            json.dumps({"params": params, "model": model}).encode("utf-8")
-        )
+        hash_object.update(event["content"].encode())
         key = hash_object.hexdigest()
         result = client.get(key)
         if result is not None:
@@ -113,19 +117,22 @@ def lambda_handler(event, context):
             f"User {user} usage limit exceeded for project {project} and model {model}"
         )
 
-    requestor = APIRequestor()
-    result = requestor.request_raw(
-        event.get("method").lower(),
-        event.get("url"),
-        params=event.get("params"),
-        supplied_headers=event.get("headers"),
-        files=event.get("files"),
-        stream=False,  # event.get("stream"),
-        request_id=event.get("request_id"),
-        request_timeout=event.get("request_timeout"),
+    _client = httpx.Client(
+        timeout=Timeout(connect=5.0, read=600.0, write=600.0, pool=600.0),
+        limits=Limits(
+            max_connections=100, max_keepalive_connections=20, keepalive_expiry=5.0
+        ),
     )
-    resp = json.loads(result.content)
+    result = _client.send(
+        request=Request(
+            method=event.get("method"),
+            url=event.get("url"),
+            content=content,
+            headers=Headers(headers),
+        ),
+    )
 
+    resp = json.loads(result.content)
     if "error" not in resp:
         cost = calculate_cost(
             model=resp["model"],
@@ -154,9 +161,11 @@ def lambda_handler(event, context):
             cost=cost,
         )
 
+    result.raise_for_status()
     result = {
-        "headers": dict(result.headers),
         "content": b64encode(result.content).decode(),
+        "headers": dict(result.headers),
+        "reason_phrase": result.reason_phrase,
         "status_code": result.status_code,
     }
 
@@ -169,22 +178,30 @@ def lambda_handler(event, context):
 if __name__ == "__main__":  # for testing
     os.environ["STAGING"] = "dev"
     print(
-        lambda_handler(
-            {
-                "method": "post",
-                "url": "/chat/completions",
-                "params": {
-                    "model": "gpt-3.5-turbo",
-                    "messages": [{"role": "user", "content": "Hello world"}],
+        b64decode(
+            lambda_handler(
+                {
+                    "method": "POST",
+                    "url": "https://api.openai.com/v1/chat/completions",
+                    "content": b64encode(
+                        json.dumps(
+                            {
+                                "messages": [
+                                    {"role": "user", "content": "Hello world"}
+                                ],
+                            }
+                        ).encode()
+                    ),
+                    "headers": {
+                        "content-type": "application/json",
+                        "authorization": f'Bearer {os.getenv("OPENAI_API_KEY")}',
+                        "openai-model": "gpt-3.5-turbo-0613",
+                        "openai-organization": f'{os.getenv("OPENAI_ORGANIZATION")}',
+                    },
+                    "project": "hello",
+                    "user": "fulano",
                 },
-                "headers": None,
-                "files": None,
-                "stream": False,
-                "request_id": None,
-                "request_timeout": None,
-                "project": "hello",
-                "user": "fulano",
-            },
-            None,
-        )
+                None,
+            )["content"]
+        ).decode()
     )

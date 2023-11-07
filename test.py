@@ -9,13 +9,13 @@ openai.set_project("hello")
 # openai.set_caching(False)
 
 # user must have IAM permissions to invoke openai-proxy-dev
-completion = openai.ChatCompletion.create(
+completion = openai.chat.completions.create(
     model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}]
 )
 print(completion)
 
 # returns cached result
-completion = openai.ChatCompletion.create(
+completion = openai.chat.completions.create(
     model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}]
 )
 print(completion)

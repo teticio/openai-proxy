@@ -1,12 +1,19 @@
-import boto3
 import json
-from base64 import b64decode
+import logging
+from base64 import b64encode, b64decode
+from packaging import version
 from types import SimpleNamespace
-from typing import Iterator, Optional, Tuple, Union
+from typing import Any, Type, TypeVar
 
+import boto3
+import httpx
 import openai as openai_orig
 from openai import *
-from openai.openai_response import OpenAIResponse
+from openai._streaming import Stream
+from openai._models import FinalRequestOptions
+from openai._types import ResponseT
+
+assert version.parse(openai_orig.__version__) >= version.parse("1.1.1")
 
 project = "N/A"
 staging = "dev"
@@ -42,37 +49,97 @@ def get_user():
     return user
 
 
+log: logging.Logger = logging.getLogger(openai_orig.__name__)
+_StreamT = TypeVar("_StreamT", bound=Stream[Any])
+
+
+def _request_proxy(
+    self,
+    *,
+    cast_to: Type[ResponseT],
+    options: FinalRequestOptions,
+    remaining_retries: int | None,
+    stream: bool,
+    stream_cls: type[_StreamT] | None,
+) -> ResponseT | _StreamT:
+    self._prepare_options(options)
+
+    retries = self._remaining_retries(remaining_retries, options)
+    request = self._build_request(options)
+    self._prepare_request(request)
+
+    try:
+        response = _send(request, auth=self.custom_auth, stream=stream)
+        log.debug(
+            'HTTP Request: %s %s "%i %s"',
+            request.method,
+            request.url,
+            response.status_code,
+            response.reason_phrase,
+        )
+        # response.raise_for_status()
+    except httpx.HTTPStatusError as err:  # thrown on 4xx and 5xx status code
+        if retries > 0 and self._should_retry(err.response):
+            return self._retry_request(
+                options,
+                cast_to,
+                retries,
+                err.response.headers,
+                stream=stream,
+                stream_cls=stream_cls,
+            )
+
+        # If the response is streamed then we need to explicitly read the response
+        # to completion before attempting to access the response text.
+        err.response.read()
+        raise self._make_status_error_from_response(err.response) from None
+    except httpx.TimeoutException as err:
+        if retries > 0:
+            return self._retry_request(
+                options,
+                cast_to,
+                retries,
+                stream=stream,
+                stream_cls=stream_cls,
+            )
+        raise APITimeoutError(request=request) from err
+    except Exception as err:
+        if retries > 0:
+            return self._retry_request(
+                options,
+                cast_to,
+                retries,
+                stream=stream,
+                stream_cls=stream_cls,
+            )
+        raise APIConnectionError(request=request) from err
+
+    return self._process_response(
+        cast_to=cast_to,
+        options=options,
+        response=response,
+        stream=stream,
+        stream_cls=stream_cls,
+    )
+
+
 user = get_user()
 lambda_client = boto3.client("lambda")
 
 
-def request_proxy(
-    self,
-    method,
-    url,
-    params=None,
-    headers=None,
-    files=None,
-    stream: bool = False,
-    request_id: Optional[str] = None,
-    request_timeout: Optional[Union[float, Tuple[float, float]]] = None,
-) -> Tuple[Union[OpenAIResponse, Iterator[OpenAIResponse]], bool, str]:
+def _send(request, auth, stream):
     payload = {
-        "method": method,
-        "url": url,
-        "params": params,
-        "headers": headers,
-        "files": files,
-        "stream": stream,
-        "request_id": request_id,
-        "request_timeout": request_timeout,
-        "user": user,
+        "method": request.method,
+        "url": str(request.url),
+        "content": b64encode(request.content).decode(),
+        "headers": dict(request.headers),
         "project": project,
+        "user": user,
     }
     if not caching:
         payload["nocache"] = True
 
-    result = SimpleNamespace(
+    response = SimpleNamespace(
         **json.loads(
             lambda_client.invoke(
                 FunctionName=f"openai-proxy-{staging}",
@@ -82,19 +149,20 @@ def request_proxy(
         )
     )
 
-    if hasattr(result, "errorMessage"):
-        if hasattr(result, "errorType"):
-            exception = getattr(error, result.errorType, Exception)
+    if hasattr(response, "errorMessage"):
+        if hasattr(response, "errorType"):
+            exception = getattr(openai_orig._exceptions, response.errorType, Exception)
         else:
-            raise Exception(result.errorMessage)
-        raise exception(result.errorMessage + "".join(result.stackTrace))
+            raise Exception(response.errorMessage)
+        raise exception(response.errorMessage + "".join(response.stackTrace))
 
-    result.content = b64decode(result.content)
-    resp, got_stream = self._interpret_response(result, stream)
-    return resp, got_stream, self.api_key
+    response.content = b64decode(response.content)
+    response.request = request
+    response.json = lambda: json.loads(response.content)
+    return response
 
 
-openai_orig.api_requestor.APIRequestor.request = request_proxy
+openai_orig._base_client.SyncAPIClient._request = _request_proxy
 __all__ = [name for name in dir(openai_orig) if not name.startswith("_")]
 globals().update({name: getattr(openai_orig, name) for name in __all__})
 

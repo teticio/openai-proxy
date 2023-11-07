@@ -22,7 +22,6 @@ There are some extra functions provided in the `openai_proxy` package to allow y
 
 ## TODO
 
-- Update to latest version of OpenAI API.
 - Make package installable.
 - Dashboard to view usage.
 - Rate limits.
