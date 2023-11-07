@@ -1,6 +1,6 @@
 resource "aws_security_group" "openai_lambda" {
-  name        = "openai-lambda"
-  vpc_id      = module.vpc.vpc_id
+  name   = "openai-lambda"
+  vpc_id = module.vpc.vpc_id
 
   egress {
     from_port   = 0
@@ -112,7 +112,8 @@ resource "aws_lambda_function" "openai_admin_dev" {
 
   environment {
     variables = {
-      STAGING = "dev"
+      STAGING     = "dev"
+      ELASTICACHE = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
     }
   }
 
@@ -131,7 +132,8 @@ resource "aws_lambda_function" "openai_admin_prod" {
 
   environment {
     variables = {
-      STAGING = "prod"
+      STAGING     = "prod"
+      ELASTICACHE = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
     }
   }
 

@@ -9,6 +9,7 @@ import boto3
 from openai.api_requestor import APIRequestor
 from pymemcache.client.base import Client
 
+TTL = 60 * 60 * 24  # 1 day
 cache_endpoint = os.getenv("ELASTICACHE", "")
 cache_port = 11211
 client = Client((cache_endpoint, cache_port)) if cache_endpoint != "" else None
@@ -160,7 +161,7 @@ def lambda_handler(event, context):
     }
 
     if client is not None and "nocache" not in event:
-        client.set(key, json.dumps(result))
+        client.set(key, json.dumps(result), expire=TTL)
 
     return result
 

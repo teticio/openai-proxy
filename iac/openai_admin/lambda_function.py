@@ -2,6 +2,11 @@ import os
 from decimal import Decimal
 
 import boto3
+from pymemcache.client.base import Client
+
+cache_endpoint = os.getenv("ELASTICACHE", "")
+cache_port = 11211
+client = Client((cache_endpoint, cache_port)) if cache_endpoint != "" else None
 
 
 dynamodb = boto3.resource("dynamodb")
@@ -34,6 +39,12 @@ def set_limit(user, project, model, staging, limit):
 
 
 def lambda_handler(event, context):
+    if "flush_cache" in event:
+        client.flush_all()
+        return {
+            "status_code": 200,
+        }
+
     set_limit(
         user=event.get("user", "*"),
         project=event.get("project"),

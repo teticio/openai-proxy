@@ -18,13 +18,12 @@ This will create two Lambda functions (one for dev and one for prod) as well as 
 - Limits can be set at project, model and user level for each staging account.
 - Responses from OpenAI are cached by default.
 
-There are some extra functions provided in the `openai_proxy` package to allow you to `set_project`, `set_staging` and `set_caching`. For convenience, a `set_limits` function is provided for users with IAM permissions to run the `openai-admin-{staging}` Lambda function.
+There are some extra functions provided in the `openai_proxy` package to allow you to `set_project`, `set_staging`, `set_caching` and `flush_cache``. For convenience, a `set_limits` function is provided for users with IAM permissions to run the `openai-admin-{staging}` Lambda function.
 
 ## TODO
 
 - Update to latest version of OpenAI API.
 - Make package installable.
-- Admin access to elasticache.
 - Dashboard to view usage.
 - Rate limits.
 - Handle streaming / async requests.

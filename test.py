@@ -2,6 +2,7 @@ import openai_proxy as openai
 
 # user must have IAM permissions to invoke openai-admin-dev
 openai.set_limit(staging="dev", project="hello", limit=10)
+openai.flush_cache()
 
 # limits must have been set for the project
 openai.set_project("hello")

@@ -88,7 +88,7 @@ def request_proxy(
         else:
             raise Exception(result.errorMessage)
         raise exception(result.errorMessage + "".join(result.stackTrace))
-    
+
     result.content = b64decode(result.content)
     resp, got_stream = self._interpret_response(result, stream)
     return resp, got_stream, self.api_key
@@ -107,6 +107,21 @@ def set_limit(
         "user": user,
         "model": model,
         "limit": limit,
+    }
+    result = json.loads(
+        lambda_client.invoke(
+            FunctionName=f"openai-admin-{staging}",
+            InvocationType="RequestResponse",
+            Payload=json.dumps(payload),
+        )["Payload"].read()
+    )
+    if "errorMessage" in result:
+        raise Exception(result["errorMessage"])
+
+
+def flush_cache():
+    payload = {
+        "flush_cache": True,
     }
     result = json.loads(
         lambda_client.invoke(

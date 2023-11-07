@@ -1,6 +1,6 @@
 resource "aws_security_group" "openai_elasticache" {
-  name        = "openai-elasticache"
-  vpc_id      = module.vpc.vpc_id
+  name   = "openai-elasticache"
+  vpc_id = module.vpc.vpc_id
 
   ingress {
     from_port       = 11211

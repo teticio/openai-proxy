@@ -4,10 +4,10 @@ data "aws_route_table" "openai" {
 }
 
 resource "aws_vpc_endpoint" "dynamodb" {
-  vpc_id             = module.vpc.vpc_id
-  service_name       = "com.amazonaws.${var.region}.dynamodb"
-  vpc_endpoint_type  = "Gateway"
-  route_table_ids    = [for r in data.aws_route_table.openai : r.route_table_id]
+  vpc_id            = module.vpc.vpc_id
+  service_name      = "com.amazonaws.${var.region}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [for r in data.aws_route_table.openai : r.route_table_id]
 }
 
 resource "aws_dynamodb_table" "openai_usage" {
