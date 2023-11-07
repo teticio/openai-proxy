@@ -21,3 +21,13 @@ variable "openai_api_key_prod" {
 variable "openai_organization_prod" {
   type = string
 }
+
+variable "num_azs" {
+  type    = number
+  default = 3
+}
+
+variable "use_elasticache" {
+  type    = bool
+  default = false
+}

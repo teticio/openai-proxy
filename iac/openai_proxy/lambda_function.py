@@ -1,11 +1,17 @@
+import hashlib
 import json
 import os
-from datetime import datetime
 from base64 import b64encode
+from datetime import datetime
 from decimal import Decimal
 
 import boto3
 from openai.api_requestor import APIRequestor
+from pymemcache.client.base import Client
+
+cache_endpoint = os.getenv("ELASTICACHE", "")
+cache_port = 11211
+client = Client((cache_endpoint, cache_port)) if cache_endpoint != "" else None
 
 prices = {
     "gpt-3.5-turbo": (0.0015, 0.002),
@@ -76,6 +82,16 @@ def lambda_handler(event, context):
     model = params.get("model")
     staging = os.environ["STAGING"]
 
+    if client is not None and "nocache" not in event:
+        hash_object = hashlib.sha256()
+        hash_object.update(
+            json.dumps({"params": params, "model": model}).encode("utf-8")
+        )
+        key = hash_object.hexdigest()
+        result = client.get(key)
+        if result is not None:
+            return json.loads(result)
+
     project_usage, project_limit = get_usage_and_limit(
         composite_key=f"*#{project}#*#{staging}"
     )
@@ -137,11 +153,16 @@ def lambda_handler(event, context):
             cost=cost,
         )
 
-    return {
+    result = {
         "headers": dict(result.headers),
-        "content": b64encode(result.content),
+        "content": b64encode(result.content).decode(),
         "status_code": result.status_code,
     }
+
+    if client is not None and "nocache" not in event:
+        client.set(key, json.dumps(result))
+
+    return result
 
 
 if __name__ == "__main__":  # for testing

@@ -1,1 +1,2 @@
-openai
+openai==0.28.1
+pymemcache==4.0.0

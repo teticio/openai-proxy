@@ -5,6 +5,7 @@ openai.set_limit(staging="dev", project="hello", limit=10)
 
 # limits must have been set for the project
 openai.set_project("hello")
+# openai.set_caching(False)
 
 # user must have IAM permissions to invoke openai-proxy-dev
 completion = openai.ChatCompletion.create(

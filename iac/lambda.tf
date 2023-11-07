@@ -1,97 +1,17 @@
-terraform {
-  required_providers {
-    aws = {
-      source = "hashicorp/aws"
-    }
+resource "aws_security_group" "openai_lambda" {
+  name        = "openai-lambda"
+  vpc_id      = module.vpc.vpc_id
 
-    docker = {
-      source = "kreuzwerker/docker"
-    }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
-provider "aws" {
-  profile = var.profile
-  region  = var.region
-}
-
-data "aws_caller_identity" "this" {}
-
-data "aws_ecr_authorization_token" "token" {}
-
-provider "docker" {
-  registry_auth {
-    address  = format("%v.dkr.ecr.%v.amazonaws.com", data.aws_caller_identity.this.account_id, var.region)
-    username = data.aws_ecr_authorization_token.token.user_name
-    password = data.aws_ecr_authorization_token.token.password
-  }
-}
-
-resource "aws_dynamodb_table" "openai_usage" {
-  name         = "openai-usage"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "composite_key"
-
-  attribute {
-    name = "composite_key"
-    type = "S"
-  }
-
-  attribute {
-    name = "user"
-    type = "S"
-  }
-
-  attribute {
-    name = "project"
-    type = "S"
-  }
-
-  attribute {
-    name = "model"
-    type = "S"
-  }
-
-  attribute {
-    name = "staging"
-    type = "S"
-  }
-
-  global_secondary_index {
-    name            = "user-index"
-    hash_key        = "user"
-    write_capacity  = 1
-    read_capacity   = 1
-    projection_type = "KEYS_ONLY"
-  }
-
-  global_secondary_index {
-    name            = "project-index"
-    hash_key        = "project"
-    write_capacity  = 1
-    read_capacity   = 1
-    projection_type = "KEYS_ONLY"
-  }
-
-  global_secondary_index {
-    name            = "model-index"
-    hash_key        = "model"
-    write_capacity  = 1
-    read_capacity   = 1
-    projection_type = "KEYS_ONLY"
-  }
-
-  global_secondary_index {
-    name            = "staging-index"
-    hash_key        = "staging"
-    write_capacity  = 1
-    read_capacity   = 1
-    projection_type = "KEYS_ONLY"
-  }
-}
-
-resource "aws_iam_policy" "lambda_policy" {
-  name        = "lambda-dynamodb-policy"
+resource "aws_iam_policy" "lambda_dynamodb" {
+  name        = "openai-lambda-dynamodb"
   description = "IAM policy for Lambda to access DynamoDB"
 
   policy = jsonencode({
@@ -110,8 +30,8 @@ resource "aws_iam_policy" "lambda_policy" {
   })
 }
 
-resource "aws_iam_role" "lambda_role" {
-  name = "lambda_role"
+resource "aws_iam_role" "lambda_exec" {
+  name = "openai-lambda-exec"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -127,51 +47,67 @@ resource "aws_iam_role" "lambda_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_policy_attachment" {
-  role       = aws_iam_role.lambda_role.name
-  policy_arn = aws_iam_policy.lambda_policy.arn
+resource "aws_iam_role_policy_attachment" "lambda_dynamodb" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = aws_iam_policy.lambda_dynamodb.arn
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
+  role       = aws_iam_role.lambda_exec.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
 resource "aws_lambda_function" "openai_proxy_dev" {
   function_name = "openai-proxy-dev"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_exec.arn
   image_uri     = module.openai_proxy.image_uri
   package_type  = "Image"
-  timeout       = 30
+  timeout       = 60
   publish       = true
 
   environment {
     variables = {
       STAGING             = "dev"
+      ELASTICACHE         = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
       OPENAI_API_KEY      = var.openai_api_key_dev
       OPENAI_ORGANIZATION = var.openai_organization_dev
     }
+  }
+
+  vpc_config {
+    subnet_ids         = module.vpc.private_subnets
+    security_group_ids = [aws_security_group.openai_lambda.id]
   }
 }
 
 resource "aws_lambda_function" "openai_proxy_prod" {
   function_name = "openai-proxy-prod"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_exec.arn
   image_uri     = module.openai_proxy.image_uri
   package_type  = "Image"
-  timeout       = 30
+  timeout       = 60
   publish       = true
 
   environment {
     variables = {
       STAGING             = "prod"
+      ELASTICACHE         = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
       OPENAI_API_KEY      = var.openai_api_key_prod
       OPENAI_ORGANIZATION = var.openai_organization_prod
     }
+  }
+
+  vpc_config {
+    subnet_ids         = module.vpc.private_subnets
+    security_group_ids = [aws_security_group.openai_lambda.id]
   }
 }
 
 resource "aws_lambda_function" "openai_admin_dev" {
   function_name = "openai-admin-dev"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_exec.arn
   image_uri     = module.openai_admin.image_uri
   package_type  = "Image"
-  timeout       = 30
   publish       = true
 
   environment {
@@ -179,20 +115,29 @@ resource "aws_lambda_function" "openai_admin_dev" {
       STAGING = "dev"
     }
   }
+
+  vpc_config {
+    subnet_ids         = module.vpc.private_subnets
+    security_group_ids = [aws_security_group.openai_lambda.id]
+  }
 }
 
 resource "aws_lambda_function" "openai_admin_prod" {
   function_name = "openai-admin-prod"
-  role          = aws_iam_role.lambda_role.arn
+  role          = aws_iam_role.lambda_exec.arn
   image_uri     = module.openai_admin.image_uri
   package_type  = "Image"
-  timeout       = 30
   publish       = true
 
   environment {
     variables = {
       STAGING = "prod"
     }
+  }
+
+  vpc_config {
+    subnet_ids         = module.vpc.private_subnets
+    security_group_ids = [aws_security_group.openai_lambda.id]
   }
 }
 

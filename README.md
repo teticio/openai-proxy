@@ -16,14 +16,15 @@ This will create two Lambda functions (one for dev and one for prod) as well as 
 - The OpenAI API keys are hidden in the Lambda function and IAM permissions can be used to control who has access to what.
 - Fine-grained usage data is tracked in the DynamoDB table.
 - Limits can be set at project, model and user level for each staging account.
-- Responses from OpenAI are cached.
+- Responses from OpenAI are cached by default.
 
-There are some extra functions provided in the `openai_proxy` package to allow you to `set_project`, `set_staging` and `clear_cache`. For convenience, a `set_limits` function is provided for users with IAM permissions to run the `openai-admin-{stagging}` Lambda function.
+There are some extra functions provided in the `openai_proxy` package to allow you to `set_project`, `set_staging` and `set_caching`. For convenience, a `set_limits` function is provided for users with IAM permissions to run the `openai-admin-{staging}` Lambda function.
 
 ## TODO
 
+- Update to latest version of OpenAI API.
 - Make package installable.
-- Cache centrally in ElastiCache.
+- Admin access to elasticache.
 - Dashboard to view usage.
 - Rate limits.
 - Handle streaming / async requests.

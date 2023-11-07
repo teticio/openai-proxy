@@ -8,9 +8,9 @@ import openai as openai_orig
 from openai import *
 from openai.openai_response import OpenAIResponse
 
-cache = {}
 project = "N/A"
 staging = "dev"
+caching = True
 
 
 def set_project(project_name: str):
@@ -23,19 +23,19 @@ def set_staging(staging_name: str):
     staging = staging_name
 
 
-def clear_cache():
-    global cache
-    cache = {}
+def set_caching(caching_value: bool):
+    global caching
+    caching = caching_value
 
 
 def get_user():
     session = boto3.Session()
-    profile = None
+    profile = session.profile_name
     profiles = session._session.full_config["profiles"]
-    if session.profile_name in profiles:
-        profile = session._session.full_config["profiles"][session.profile_name]
-        if "source_profile" in profile:
-            profile = profile["source_profile"]
+    if profile in profiles:
+        config = session._session.full_config["profiles"][session.profile_name]
+        if "source_profile" in config:
+            profile = config["source_profile"]
     user = (
         boto3.Session(profile_name=profile).client("sts").get_caller_identity()["Arn"]
     )
@@ -57,9 +57,6 @@ def request_proxy(
     request_id: Optional[str] = None,
     request_timeout: Optional[Union[float, Tuple[float, float]]] = None,
 ) -> Tuple[Union[OpenAIResponse, Iterator[OpenAIResponse]], bool, str]:
-    key = json.dumps({"url": url, "params": params})
-    if key in cache:
-        return cache[key], False, self.api_key
     payload = {
         "method": method,
         "url": url,
@@ -72,6 +69,9 @@ def request_proxy(
         "user": user,
         "project": project,
     }
+    if not caching:
+        payload["nocache"] = True
+
     result = SimpleNamespace(
         **json.loads(
             lambda_client.invoke(
@@ -81,13 +81,16 @@ def request_proxy(
             )["Payload"].read()
         )
     )
+
     if hasattr(result, "errorMessage"):
-        exception = getattr(error, result.errorType, Exception)
-        raise exception(result.errorMessage + "\n" + "\n".join(result.stackTrace))
+        if hasattr(result, "errorType"):
+            exception = getattr(error, result.errorType, Exception)
+        else:
+            raise Exception(result.errorMessage)
+        raise exception(result.errorMessage + "".join(result.stackTrace))
+    
     result.content = b64decode(result.content)
     resp, got_stream = self._interpret_response(result, stream)
-    if not got_stream:
-        cache[key] = resp
     return resp, got_stream, self.api_key
 
 
@@ -113,4 +116,4 @@ def set_limit(
         )["Payload"].read()
     )
     if "errorMessage" in result:
-        raise Exception(result["errorMessage"] + "\n" + "\n".join(result["stackTrace"]))
+        raise Exception(result["errorMessage"])
