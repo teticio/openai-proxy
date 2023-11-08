@@ -1,4 +1,4 @@
-# OpenAI Proxy
+# OpenAI Proxy [`openai-wrapi`]
 
 A drop-in wrapper to the `openai` package that tracks costs per user, project, model and staging account.
 
@@ -16,7 +16,7 @@ Lastly, it is easy to make redundant calls to the API incurring unnecessary cost
 
 This repo provides a wrapper which checks usage limits before passing on the request to the OpenAI API and records the usage costs per user, project, model and staging account. It leverages the IAM permission framework of AWS to control access to the OpenAI API, without exposing the unique API keys per staging account. Responses from the OpenAI API are cached by default. Infrastructure As Code (IAC) is given to deploy the solution using a serverless architecture in AWS at a minimal extra cost and latency.
 
-## Usage
+## Deploy
 
 Ideally, you should have one OpenAI account per staging account (dev, prod). Create a `terraform.tfvars` file in the `iac` directory with the following variables:
 
@@ -44,6 +44,24 @@ This will create
 - A Lambda function to set usage limits and flush the cache per staging account (dev, prod).
 - A DynamoDB table to store usage and limit data per staging account (dev, prod).
 - An optional ElastiCache Memcache cluster to cache OpenAI API responses.
+
+# Install
+
+From PyPI
+
+```bash
+pip install openai-wrapi
+```
+
+From source
+
+```bash
+git clone
+cd openai-proxy
+pip install .
+```
+
+## Usage
 
 In order to use the proxy in your Python code, provided you have the appropriate IAM permissions, you can run:
 
