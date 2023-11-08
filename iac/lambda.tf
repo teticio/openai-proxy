@@ -62,7 +62,7 @@ resource "aws_lambda_function" "openai_proxy_dev" {
   role          = aws_iam_role.lambda_exec.arn
   image_uri     = module.openai_proxy.image_uri
   package_type  = "Image"
-  timeout       = 60
+  timeout       = 600
   publish       = true
 
   environment {
@@ -85,7 +85,7 @@ resource "aws_lambda_function" "openai_proxy_prod" {
   role          = aws_iam_role.lambda_exec.arn
   image_uri     = module.openai_proxy.image_uri
   package_type  = "Image"
-  timeout       = 60
+  timeout       = 600
   publish       = true
 
   environment {

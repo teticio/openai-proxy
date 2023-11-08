@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import boto3
 import httpx
-from httpx import URL, Headers, Limits, Request, Timeout
+from httpx import Limits, Request, Timeout
 from pymemcache.client.base import Client
 
 TTL = 60 * 60 * 24  # 1 day
@@ -130,7 +130,7 @@ def lambda_handler(event, context):
             method=event.get("method"),
             url=event.get("url"),
             content=content,
-            headers=Headers(headers),
+            headers=headers,
         ),
     )
 
