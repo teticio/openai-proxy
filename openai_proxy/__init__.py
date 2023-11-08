@@ -86,12 +86,12 @@ if major == 0:
             )
             result = _send(request, auth=None, stream=stream)
         except requests.exceptions.Timeout as e:
-            raise error.Timeout("Request timed out: {}".format(e)) from e
+            raise error.Timeout("Request timed out: {}".format(e)) from e  # noqa: F821
         except requests.exceptions.RequestException as e:
-            raise error.APIConnectionError(
+            raise error.APIConnectionError(  # noqa: F821
                 "Error communicating with OpenAI: {}".format(e)
             ) from e
-        util.log_debug(
+        util.log_debug(  # noqa: F821
             "OpenAI API response",
             path=abs_url,
             response_code=result.status_code,
@@ -100,7 +100,7 @@ if major == 0:
         )
         # Don't read the whole stream for debug logging unless necessary.
         if log == "debug":
-            util.log_debug(
+            util.log_debug(  # noqa: F821
                 "API response body", body=result.content, headers=result.headers
             )
         return result
