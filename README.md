@@ -56,7 +56,7 @@ pip install openai-wrapi
 From source
 
 ```bash
-git clone
+git clone https://github.com/teticio/openai-proxy.git
 cd openai-proxy
 pip install .
 ```
