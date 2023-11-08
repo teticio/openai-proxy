@@ -1,4 +1,6 @@
 __pycache__
+openai_proxy.egg-info
+dist
 .env
 .terraform*
 terraform.*
