@@ -57,7 +57,7 @@ def get_user():
 
 
 globals().update(vars(openai_orig))
-sys.modules["openai"] = sys.modules["openai_proxy"]
+sys.modules["openai"] = sys.modules["openai_wrapi"]
 
 if major == 0:
 

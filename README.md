@@ -66,10 +66,10 @@ pip install .
 In order to use the proxy in your Python code, provided you have the appropriate IAM permissions, you can run:
 
 ```python
-import openai_proxy as openai
+import openai_wrapi as openai
 ```
 
-You no longer need set the OpenAI API key or organization ID as these are securely stored in the corresponding Lambda functions. If you plan to use packages such as `langchain` which use the `openai` package internally, you need only ensure you have previously imported `openai_proxy`.
+You no longer need set the OpenAI API key or organization ID as these are securely stored in the corresponding Lambda functions. If you plan to use packages such as `langchain` which use the `openai` package internally, you need only ensure you have previously imported `openai_wrapi`.
 
 By default, the project associated with any API calls will be `N/A`. In order to set the project name:
 

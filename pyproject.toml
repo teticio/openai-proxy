@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "openai-proxy"
-version = "0.1.0"
+name = "openai_wrapi"
+version = "0.0.5"
 description = ""
 authors = ["Robert Dargavel Smith <teticio@gmail.com>"]
 readme = "README.md"

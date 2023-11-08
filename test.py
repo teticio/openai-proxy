@@ -1,5 +1,5 @@
 # Make sure you do this before importing any packages that use openai under the hood
-import openai_proxy as openai
+import openai_wrapi as openai
 
 
 # User must have IAM permissions to invoke openai-admin-dev
