@@ -63,7 +63,7 @@ pip install .
 
 ## Usage
 
-In order to use the proxy in your Python code, provided you have the appropriate IAM permissions, you can run:
+In order to use the proxy in your Python code, provided you have the appropriate IAM permissions, include
 
 ```python
 import openai_wrapi as openai
@@ -107,9 +107,14 @@ openai.flush_cache()
 
 Note that this wrapper currently works for major versions 0 and 1 of the `openai` package.
 
+To see the usage in a dashboard, run
+
+```python
+streamlit run app.py
+```
+
 ## TODO
 
 - Pass in timeout
-- Dashboard to view usage.
 - Rate limits.
 - Handle streaming / async requests.

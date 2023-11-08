@@ -6,10 +6,12 @@ authors = ["Robert Dargavel Smith <teticio@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.13"
 openai = "^1.1.1"
 boto3 = "^1.28.76"
 packaging = "^23.2"
+pandas = "^2.1.2"
+streamlit = "^1.28.1"
 
 
 [build-system]
