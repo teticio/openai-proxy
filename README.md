@@ -6,7 +6,7 @@ A drop-in wrapper to the `openai` package that tracks costs per user, project, m
 
 OpenAI does not currently provide any way to monitor or limit API usage costs by user*, project or model. In fact, there is no concept of "project", only users (which correspond to email addresses), organizations (which correspond to OpenAI accounts and must be individually funded) and API keys (which can be used interchangeably across any organizations to which a user belongs).
 
-This leads to a proliferation of API keys and users opening up a wider attack surface from a security point of view. Furthermore, users cannot be forced to use MFA and can continue to use the API and create API keys, even if their email no longer exists.
+This leads to a proliferation of API keys and users opening up a wider attack surface from a security point of view. Furthermore, users cannot be forced to use MFA and may continue to use the API and create API keys, even if their email no longer exists.
 
 Lastly, it is easy to make redundant calls to the API incurring unnecessary costs, especially when developing in an interactive environment such as a Jupyter notebook.
 
