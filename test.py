@@ -1,22 +1,24 @@
-# make sure you do this before importing any packages that use openai under the hood
+# Make sure you do this before importing any packages that use openai under the hood
 import openai_proxy as openai
 
-# user must have IAM permissions to invoke openai-admin-dev
+
+# User must have IAM permissions to invoke openai-admin-dev
 openai.set_limit(staging="dev", project="hello", limit=10)
 openai.flush_cache()
 
-# limits must have been set for the project
+# Limits must have been set for the project
 openai.set_project("hello")
 # openai.set_caching(False)
 
-# user must have IAM permissions to invoke openai-proxy-dev
-completion = openai.chat.completions.create(
-    model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}]
-)
-print(completion)
 
-# returns cached result
-completion = openai.chat.completions.create(
-    model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}]
-)
-print(completion)
+for _ in range(2):  # second call returns cached result
+    # User must have IAM permissions to invoke openai-proxy-dev
+    try:  # openai v1
+        completion = openai.chat.completions.create(
+            model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}]
+        )
+    except:  # openai v0
+        completion = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}]
+        )
+    print(completion)
