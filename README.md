@@ -42,7 +42,7 @@ terraform apply -auto-approve
 This will create
 - A Lambda function to proxy calls to the OpenAI API per staging account (dev, prod).
 - A Lambda function to set usage limits and flush the cache per staging account (dev, prod).
-- A DynamoDB table to store usage and limit data per staging account (dev, prod).
+- A DynamoDB table to store usage and limits.
 - An optional ElastiCache Memcache cluster to cache OpenAI API responses.
 
 # Install
