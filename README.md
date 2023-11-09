@@ -50,7 +50,7 @@ use_elasticache          = true        # Whether to use ElastiCache Memcache
 To deploy run:
 
 ```bash
-cd openai-proxy/iac
+cd iac
 terraform init
 terraform apply -auto-approve
 ```
