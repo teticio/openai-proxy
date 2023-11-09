@@ -16,6 +16,22 @@ Lastly, it is easy to make redundant calls to the API incurring unnecessary cost
 
 This repo provides a wrapper which checks usage limits before passing on the request to the OpenAI API and records the usage costs per user, project, model and staging account. It leverages the IAM permission framework of AWS to control access to the OpenAI API, without exposing the unique API keys per staging account. Responses from the OpenAI API are cached by default. Infrastructure As Code (IAC) is given to deploy the solution using a serverless architecture in AWS at a minimal extra cost and latency.
 
+# Install
+
+From PyPI (for users)
+
+```bash
+pip install openai-wrapi
+```
+
+From source (for admins)
+
+```bash
+git clone https://github.com/teticio/openai-proxy.git
+cd openai-proxy
+pip install .
+```
+
 ## Deploy
 
 Ideally, you should have one OpenAI account per staging account (dev, prod). Create a `terraform.tfvars` file in the `iac` directory with the following variables:
@@ -34,7 +50,7 @@ use_elasticache          = true        # Whether to use ElastiCache Memcache
 To deploy run:
 
 ```bash
-cd iac
+cd openai-proxy/iac
 terraform init
 terraform apply -auto-approve
 ```
@@ -44,22 +60,6 @@ This will create
 - A Lambda function to set usage limits and flush the cache per staging account (dev, prod).
 - A DynamoDB table to store usage and limits.
 - An optional ElastiCache Memcache cluster to cache OpenAI API responses.
-
-# Install
-
-From PyPI
-
-```bash
-pip install openai-wrapi
-```
-
-From source
-
-```bash
-git clone https://github.com/teticio/openai-proxy.git
-cd openai-proxy
-pip install .
-```
 
 ## Usage
 
