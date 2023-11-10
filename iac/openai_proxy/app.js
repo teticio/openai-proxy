@@ -3,9 +3,9 @@ const Memcached = require('memcached');
 const axios = require('axios');
 const crypto = require('crypto');
 
-const cacheEndpoint = process.env.ELASTICACHE;
+const cacheEndpoint = process.env.ELASTICACHE || "";
 const cachePort = 11211;
-const memcachedClient = cacheEndpoint ? new Memcached(`${cacheEndpoint}:${cachePort}`) : null;
+const memcachedClient = cacheEndpoint != "" ? new Memcached(`${cacheEndpoint}:${cachePort}`) : null;
 const TTL = 60 * 60 * 24; // 1 day
 const ddbClient = new DynamoDBClient();
 
@@ -56,7 +56,8 @@ async function updateUsage(user, project, model, staging, cost) {
                 "S": compositeKey
             }
         },
-        UpdateExpression: "SET #month = if_not_exists(#month, :zero) + :cost",
+        UpdateExpression: "SET #month = if_not_exists(#month, :zero) + :cost, " +
+            "#user = :user, #project = :project, #model = :model, #staging = :staging",
         ExpressionAttributeValues: {
             ":zero": {
                 "N": '0',
@@ -64,9 +65,25 @@ async function updateUsage(user, project, model, staging, cost) {
             ":cost": {
                 "N": String(cost)
             },
+            ":user": {
+                "S": user,
+            },
+            ":project": {
+                "S": project,
+            },
+            ":model": {
+                "S": model,
+            },
+            ":staging": {
+                "S": staging,
+            },
         },
         ExpressionAttributeNames: {
-            "#month": currentMonth
+            "#month": currentMonth,
+            "#user": "user",
+            "#project": "project",
+            "#model": "model",
+            "#staging": "staging",
         }
     };
 
@@ -83,15 +100,19 @@ exports.lambdaHandler = async (event, context) => {
     headers.authorization = `Bearer ${process.env.OPENAI_API_KEY}`;
     headers['openai-organization'] = process.env.OPENAI_ORGANIZATION;
     let model = headers['openai-model'] || JSON.parse(content).model;
-    if (!(model in prices)) {
+    if (!prices[model]) {
         model = model.substring(0, model.lastIndexOf('-'));
     }
 
     let key, result;
     if (memcachedClient && !event.nocache) {
         key = crypto.createHash('sha256').update(event.content).digest('hex');
-        result = await new Promise(resolve => memcachedClient.get(key, (err, data) => resolve(data)));
+        result = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
+            if (err) throw err;
+            resolve(data)
+        }));
         if (result) {
+            console.log("Cache hit");
             return JSON.parse(result);
         }
     }
@@ -139,7 +160,13 @@ exports.lambdaHandler = async (event, context) => {
     };
 
     if (memcachedClient && !event.nocache) {
-        memcachedClient.set(key, JSON.stringify(response), { expire: TTL });
+        await new Promise((resolve, reject) => memcachedClient.set(key, JSON.stringify(response), TTL, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        }));
     }
 
     return response;
