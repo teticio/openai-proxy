@@ -227,7 +227,7 @@ def _send(request, auth=None, stream=False):
             )
         else:
             raise Exception(response.errorMessage)
-        raise exception(response.errorMessage + "".join(response.stackTrace))
+        raise exception(response.errorMessage + "\n" + "\n".join(response.trace))
 
     response.content = b64decode(response.content)
     response.request = request
