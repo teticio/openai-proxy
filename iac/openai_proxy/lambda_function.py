@@ -137,7 +137,7 @@ def lambda_handler(event, context):
     resp = json.loads(result.content)
     if "error" not in resp:
         cost = calculate_cost(
-            model=resp["model"],
+            model=model,
             input_tokens=resp["usage"]["prompt_tokens"],
             output_tokens=resp["usage"]["completion_tokens"],
         )
