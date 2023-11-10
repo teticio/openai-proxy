@@ -4,3 +4,4 @@ dist
 .env
 .terraform*
 terraform.*
+node_modules

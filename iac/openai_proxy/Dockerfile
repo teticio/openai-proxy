@@ -1,5 +1,5 @@
-FROM public.ecr.aws/lambda/python:3.11
-COPY requirements.txt /var/task
-COPY lambda_function.py /var/task
-RUN pip install -r requirements.txt
-CMD [ "lambda_function.lambda_handler" ]
+FROM public.ecr.aws/lambda/nodejs:18
+COPY package.json /var/task/
+COPY app.js /var/task/
+RUN npm install
+CMD [ "app.handler" ]  # Replace 'app.handler' with your handler function

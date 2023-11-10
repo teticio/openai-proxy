@@ -1,0 +1,32 @@
+{
+  "name": "openai_proxy",
+  "version": "0.0.5",
+  "description": "OpenAI API proxy for fine-grained cost tracking & control and caching of responses",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/teticio/openai-proxy.git"
+  },
+  "keywords": [
+    "wrapper",
+    "proxy",
+    "openai-api",
+    "chatgpt"
+  ],
+  "author": "Robert Dargavel Smith",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/teticio/openai-proxy/issues"
+  },
+  "homepage": "https://github.com/teticio/openai-proxy#readme",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.445.0",
+    "axios": "^1.6.1",
+    "buffer": "^6.0.3",
+    "crypto": "^1.0.1",
+    "memcached": "^2.2.2"
+  }
+}

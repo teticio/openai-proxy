@@ -5,6 +5,16 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Launch Program",
+            "program": "${workspaceFolder}/iac/openai_proxy/app.js",
+            "request": "launch",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "type": "node",
+            "envFile": "${workspaceFolder}/.env"
+        },
+        {
             "name": "Python: Streamlit",
             "type": "python",
             "request": "launch",

@@ -151,8 +151,8 @@ module "openai_proxy" {
   platform        = "linux/amd64"
 
   image_tag = sha1(join("", [
-    filesha1("${path.module}/openai_proxy/requirements.txt"),
-    filesha1("${path.module}/openai_proxy/lambda_function.py"),
+    filesha1("${path.module}/openai_proxy/package.json"),
+    filesha1("${path.module}/openai_proxy/app.js"),
     filesha1("${path.module}/openai_proxy/Dockerfile")
   ]))
 
