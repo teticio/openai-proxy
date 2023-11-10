@@ -17,7 +17,7 @@ for _ in range(2):  # second call returns cached result
         completion = openai.chat.completions.create(
             model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}]
         )
-    except:  # openai v0
+    except AttributeError:  # openai v0
         completion = openai.ChatCompletion.create(
             model="gpt-3.5-turbo", messages=[{"role": "user", "content": "Hello world"}]
         )
