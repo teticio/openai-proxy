@@ -2,11 +2,11 @@ const { DynamoDBClient, GetItemCommand, UpdateItemCommand } = require("@aws-sdk/
 const Memcached = require('memcached');
 const axios = require('axios');
 const crypto = require('crypto');
-const { Buffer } = require('buffer');
 
 const cacheEndpoint = process.env.ELASTICACHE;
 const cachePort = 11211;
 const memcachedClient = cacheEndpoint ? new Memcached(`${cacheEndpoint}:${cachePort}`) : null;
+const TTL = 60 * 60 * 24; // 1 day
 const ddbClient = new DynamoDBClient();
 
 const prices = {
@@ -78,12 +78,12 @@ exports.lambdaHandler = async (event, context) => {
     const user = event.user;
     const project = event.project || 'N/A';
     const staging = process.env.STAGING;
-    const content = Buffer.from(event.content, 'base64').toString();
+    const content = atob(event.content);
     const headers = event.headers;
     headers.authorization = `Bearer ${process.env.OPENAI_API_KEY}`;
     headers['openai-organization'] = process.env.OPENAI_ORGANIZATION;
     let model = headers['openai-model'] || JSON.parse(content).model;
-    if (!prices[model]) {
+    if (!(model in prices)) {
         model = model.substring(0, model.lastIndexOf('-'));
     }
 
@@ -122,7 +122,7 @@ exports.lambdaHandler = async (event, context) => {
     const resp = httpResult.data;
     if (!resp.error) {
         const cost = calculateCost(
-            resp.model,
+            model,
             resp.usage.prompt_tokens,
             resp.usage.completion_tokens
         );
@@ -132,7 +132,7 @@ exports.lambdaHandler = async (event, context) => {
     }
 
     const response = {
-        content: Buffer.from(btoa(JSON.stringify(httpResult.data)), 'base64'),
+        content: btoa(JSON.stringify(httpResult.data)),
         headers: httpResult.headers,
         reason_phrase: httpResult.statusText,
         status_code: httpResult.status
@@ -151,13 +151,13 @@ if (require.main === module) {
     const event = {
         method: "POST",
         url: "https://api.openai.com/v1/chat/completions",
-        content: Buffer.from(
+        content: btoa(
             JSON.stringify({
                 messages: [
                     { role: "user", content: "Hello world" }
                 ]
             })
-        ).toString('base64'),
+        ),
         headers: {
             "content-type": "application/json",
             "openai-model": "gpt-3.5-turbo-0613",
@@ -168,7 +168,7 @@ if (require.main === module) {
 
     exports.lambdaHandler(event, null)
         .then(response => {
-            console.log(Buffer.from(response.content, 'base64').toString());
+            console.log(atob(response.content.toString()));
         })
         .catch(error => console.error(error));
 }
