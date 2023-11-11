@@ -131,11 +131,7 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
         'authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'openai-organization': process.env.OPENAI_ORGANIZATION,
     };
-    // if (context.headers['openai-model']) {
-    //     headers['openai-model'] = context.headers['openai-model'];
-    // }
     const body = JSON.parse(event.body);
-    // let model = headers['openai-model'] || JSON.parse(body).model;
     let model = body.model;
     if (!prices[model]) {
         model = model.substring(0, model.lastIndexOf('-'));
@@ -198,19 +194,35 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
     );
 
     const buffer = bufferStream.getBuffer().toString();
+    let prompt_tokens, completion_tokens;
     if (!body.stream) {
         const response = JSON.parse(buffer);
         if (!response.error) {
-            const cost = calculateCost(
-                model,
-                response.usage.prompt_tokens,
-                response.usage.completion_tokens
-            );
-            await updateUsage(user, project, model, staging, cost);
-            await updateUsage('*', project, model, staging, cost);
-            await updateUsage('*', project, '*', staging, cost);
+            prompt_tokens = response.usage.prompt_tokens;
+            completion_tokens = response.usage.completion_tokens;
         }
-    } // TODO: calculate usage for streamed responses
+    } else {
+        const CHARS_PER_TOKEN = 4; // estimate tokens
+        prompt_tokens = parseInt(body.messages.reduce((acc, message) =>
+            acc + message.content.length, 0
+        ) / CHARS_PER_TOKEN);
+        let chunks = buffer.split('\n\n');
+        completion_tokens = parseInt(chunks.slice(0, chunks.length - 3).reduce((acc, chunk) =>
+            acc + JSON.parse(chunk.slice('data: '.length)).choices[0].delta.content.length, 0
+        ) / CHARS_PER_TOKEN);
+    }
+
+    if (prompt_tokens && completion_tokens) {
+        console.log('Usage: ' + prompt_tokens + ' input tokens + ' + completion_tokens + ' output tokens');
+        const cost = calculateCost(
+            model,
+            prompt_tokens,
+            completion_tokens
+        );
+        await updateUsage(user, project, model, staging, cost);
+        await updateUsage('*', project, model, staging, cost);
+        await updateUsage('*', project, '*', staging, cost);
+    }
 
     if (memcachedClient && !event.nocache) {
         await new Promise((resolve, reject) => memcachedClient.set(key, buffer, TTL, (err) => {

@@ -1,10 +1,7 @@
 # TODO
-# BufferStream -> UsageStream
-# headers not in context! check other headers - options
 # project, user, nocache
 # handle errors, add timeout
 # get v0 working
-# test streaming https://github.com/openai/openai-cookbook/blob/main/examples/How_to_stream_completions.ipynb
 # test with langchain
 # tidy and refactor
 
