@@ -1,7 +1,10 @@
 # TODO
-# check other headers - options
+# headers not in context! check other headers - options
+# handle errors
 # get v0 working
-# streaming
+# test streaming https://github.com/openai/openai-cookbook/blob/main/examples/How_to_stream_completions.ipynb
+# test with langchain
+# tidy and refactor
 
 # Make sure you do this before importing any packages that use openai under the hood
 import openai_wrapi as openai

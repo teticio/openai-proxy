@@ -1,20 +1,22 @@
-const { DynamoDBClient, GetItemCommand, UpdateItemCommand } = require("@aws-sdk/client-dynamodb");
+const { DynamoDBClient, GetItemCommand, UpdateItemCommand } = require('@aws-sdk/client-dynamodb');
 const Memcached = require('memcached');
 const axios = require('axios');
 const crypto = require('crypto');
+const pipeline = require('util').promisify(require('stream').pipeline);
+const { PassThrough, Readable, Writable } = require('stream');
 
-const cacheEndpoint = process.env.ELASTICACHE || "";
+const cacheEndpoint = process.env.ELASTICACHE || '';
 const cachePort = 11211;
-const memcachedClient = cacheEndpoint != "" ? new Memcached(`${cacheEndpoint}:${cachePort}`) : null;
+const memcachedClient = cacheEndpoint != '' ? new Memcached(`${cacheEndpoint}:${cachePort}`) : null;
 const TTL = 60 * 60 * 24; // 1 day
 const ddbClient = new DynamoDBClient();
 
 const prices = {
-    "gpt-3.5-turbo": [0.0015, 0.002],
-    "gpt-3.5-turbo-16k": [0.003, 0.004],
-    "gpt-3.5-turbo-instruct": [0.0015, 0.002],
-    "gpt-4": [0.03, 0.06],
-    "gpt-4-32k": [0.06, 0.12],
+    'gpt-3.5-turbo': [0.0015, 0.002],
+    'gpt-3.5-turbo-16k': [0.003, 0.004],
+    'gpt-3.5-turbo-instruct': [0.0015, 0.002],
+    'gpt-4': [0.03, 0.06],
+    'gpt-4-32k': [0.06, 0.12],
 };
 
 function calculateCost(model, inputTokens, outputTokens) {
@@ -27,10 +29,10 @@ async function getUsageAndLimit(compositeKey) {
     let currentMonth = (today.getMonth() + 1).toString().padStart(2, '0') + today.getFullYear().toString().slice(2, 4);
 
     let params = {
-        TableName: "openai-usage",
+        TableName: 'openai-usage',
         Key: {
-            "composite_key": {
-                "S": compositeKey
+            'composite_key': {
+                'S': compositeKey
             }
         },
     };
@@ -50,40 +52,40 @@ async function updateUsage(user, project, model, staging, cost) {
     let compositeKey = `${user}#${project}#${model}#${staging}`;
 
     let params = {
-        TableName: "openai-usage",
+        TableName: 'openai-usage',
         Key: {
-            "composite_key": {
-                "S": compositeKey
+            'composite_key': {
+                'S': compositeKey
             }
         },
-        UpdateExpression: "SET #month = if_not_exists(#month, :zero) + :cost, " +
-            "#user = :user, #project = :project, #model = :model, #staging = :staging",
+        UpdateExpression: 'SET #month = if_not_exists(#month, :zero) + :cost, ' +
+            '#user = :user, #project = :project, #model = :model, #staging = :staging',
         ExpressionAttributeValues: {
-            ":zero": {
-                "N": '0',
+            ':zero': {
+                'N': '0',
             },
-            ":cost": {
-                "N": String(cost)
+            ':cost': {
+                'N': String(cost)
             },
-            ":user": {
-                "S": user,
+            ':user': {
+                'S': user,
             },
-            ":project": {
-                "S": project,
+            ':project': {
+                'S': project,
             },
-            ":model": {
-                "S": model,
+            ':model': {
+                'S': model,
             },
-            ":staging": {
-                "S": staging,
+            ':staging': {
+                'S': staging,
             },
         },
         ExpressionAttributeNames: {
-            "#month": currentMonth,
-            "#user": "user",
-            "#project": "project",
-            "#model": "model",
-            "#staging": "staging",
+            '#month': currentMonth,
+            '#user': 'user',
+            '#project': 'project',
+            '#model': 'model',
+            '#staging': 'staging',
         }
     };
 
@@ -91,15 +93,46 @@ async function updateUsage(user, project, model, staging, cost) {
     await ddbClient.send(command);
 }
 
-exports.lambdaHandler = async (event, context) => {
+if (typeof awslambda === 'undefined') { // stub for testing
+    global.awslambda = {
+        streamifyResponse(lambdaHandler) {
+            return async (event, context) => {
+                responseStream = Writable();
+                responseStream._write = (chunk, encoding, callback) => {
+                    console.log(chunk.toString());
+                    callback();
+                }
+                await lambdaHandler(event, responseStream, context);
+            };
+        }
+    }
+}
+
+class BufferStream extends PassThrough {
+    constructor(options) {
+        super(options);
+        this._buffer = [];
+    }
+
+    _write(chunk, encoding, callback) {
+        this._buffer.push(chunk);
+        super._write(chunk, encoding, callback);
+    }
+
+    getBuffer() {
+        return Buffer.concat(this._buffer);
+    }
+}
+
+exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream, context) => {
     const headers = {
         'content-type': 'application/json',
         'authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
         'openai-organization': process.env.OPENAI_ORGANIZATION,
     };
-    if (context.headers['openai-model']) {
-        headers['openai-model'] = context.headers['openai-model'];
-    }
+    // if (context.headers['openai-model']) {
+    //     headers['openai-model'] = context.headers['openai-model'];
+    // }
     const body = event.body;
     let model = headers['openai-model'] || JSON.parse(body).model;
     if (!prices[model]) {
@@ -109,20 +142,24 @@ exports.lambdaHandler = async (event, context) => {
     const project = 'hello';
     const staging = context.functionName.split('-').pop();
     let url = 'https://api.openai.com/v1' + event.rawPath;
-    if (event.rawQueryString && event.rawQueryString != "") {
+    if (event.rawQueryString && event.rawQueryString != '') {
         url = url + '?' + event.rawQueryString;
     }
 
-    let key, result;
+    let key;
     if (memcachedClient && !event.nocache) {
         key = crypto.createHash('sha256').update(body).digest('hex');
-        result = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
+        const result = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
             if (err) throw err;
             resolve(data)
         }));
         if (result) {
-            console.log("Cache hit");
-            return JSON.parse(result);
+            console.log('Cache hit');
+            await pipeline(
+                Readable.from(Buffer.from(result)),
+                responseStream,
+            );
+            return;
         }
     }
 
@@ -143,65 +180,56 @@ exports.lambdaHandler = async (event, context) => {
     }
 
     const httpResult = await axios({
-        method: "POST",
+        method: 'POST',
         url: url,
         data: body,
-        headers: headers
+        headers: headers,
+        responseType: 'stream',
     });
 
-    const resp = httpResult.data;
-    if (!resp.error) {
+    bufferStream = new BufferStream();
+    await pipeline(
+        httpResult.data,
+        bufferStream,
+        responseStream,
+    );
+
+    const response = JSON.parse(bufferStream.getBuffer().toString());
+    if (!response.error) {
         const cost = calculateCost(
             model,
-            resp.usage.prompt_tokens,
-            resp.usage.completion_tokens
+            response.usage.prompt_tokens,
+            response.usage.completion_tokens
         );
         await updateUsage(user, project, model, staging, cost);
-        await updateUsage("*", project, model, staging, cost);
-        await updateUsage("*", project, "*", staging, cost);
+        await updateUsage('*', project, model, staging, cost);
+        await updateUsage('*', project, '*', staging, cost);
     }
-
-    const response = {
-        body: JSON.stringify(httpResult.data),
-        headers: httpResult.headers,
-        reason_phrase: httpResult.statusText,
-        status_code: httpResult.status
-    };
 
     if (memcachedClient && !event.nocache) {
-        await new Promise((resolve, reject) => memcachedClient.set(key, JSON.stringify(response), TTL, (err) => {
-            if (err) {
-                reject(err);
-            } else {
-                resolve();
-            }
-        }));
+        await memcachedClient.set(key, JSON.stringify(response), TTL, (err) => console.error(err));
     }
+});
 
-    return response;
-};
-
-if (require.main === module) {
+if (require.main === module) { // for testing
     const event = {
-        rawPath: "/chat/completions",
+        rawPath: '/chat/completions',
         body: JSON.stringify({
             messages: [
-                { role: "user", content: "Hello world" }
+                { role: 'user', content: 'Hello world' }
             ]
         }),
     };
     const context = {
-        functionName: "openai-proxy-dev",
+        functionName: 'openai-proxy-dev',
         headers: {
-            "openai-model": "gpt-3.5-turbo-0613",
-            "user": "fulano",
-            "project": "hello",
+            'openai-model': 'gpt-3.5-turbo-0613',
+            'user': 'fulano',
+            'project': 'hello',
         },
     };
 
     exports.lambdaHandler(event, context)
-        .then(response => {
-            console.log(response.body.toString());
-        })
+        .then()
         .catch(error => console.error(error));
 }
