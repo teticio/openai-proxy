@@ -229,7 +229,7 @@ if (require.main === module) { // for testing
         rawPath: '/chat/completions',
         body: JSON.stringify({
             messages: [
-                { role: 'user', content: 'Tell me a story in 100 words' }
+                { role: 'user', content: 'Tell me a story in 10 words' }
             ],
             model: 'gpt-3.5-turbo-0613',
             stream: true,

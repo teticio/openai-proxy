@@ -206,9 +206,11 @@ module "openai_admin" {
 resource "aws_lambda_function_url" "openai_proxy_dev" {
   function_name      = aws_lambda_function.openai_proxy_dev.function_name
   authorization_type = "AWS_IAM"
+  invoke_mode        = "RESPONSE_STREAM"
 }
 
 resource "aws_lambda_function_url" "openai_proxy_prod" {
   function_name      = aws_lambda_function.openai_proxy_prod.function_name
   authorization_type = "AWS_IAM"
+  invoke_mode        = "RESPONSE_STREAM"
 }
