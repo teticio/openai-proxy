@@ -67,7 +67,6 @@ resource "aws_lambda_function" "openai_proxy_dev" {
 
   environment {
     variables = {
-      STAGING             = "dev"
       ELASTICACHE         = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
       OPENAI_API_KEY      = var.openai_api_key_dev
       OPENAI_ORGANIZATION = var.openai_organization_dev
@@ -90,7 +89,6 @@ resource "aws_lambda_function" "openai_proxy_prod" {
 
   environment {
     variables = {
-      STAGING             = "prod"
       ELASTICACHE         = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
       OPENAI_API_KEY      = var.openai_api_key_prod
       OPENAI_ORGANIZATION = var.openai_organization_prod
@@ -203,4 +201,14 @@ module "openai_admin" {
       }
     ]
   })
+}
+
+resource "aws_lambda_function_url" "openai_proxy_dev" {
+  function_name      = aws_lambda_function.openai_proxy_dev.function_name
+  authorization_type = "AWS_IAM"
+}
+
+resource "aws_lambda_function_url" "openai_proxy_prod" {
+  function_name      = aws_lambda_function.openai_proxy_prod.function_name
+  authorization_type = "AWS_IAM"
 }

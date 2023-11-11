@@ -1,3 +1,8 @@
+# TODO
+# check other headers - options
+# get v0 working
+# streaming
+
 # Make sure you do this before importing any packages that use openai under the hood
 import openai_wrapi as openai
 

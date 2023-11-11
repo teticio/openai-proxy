@@ -92,21 +92,30 @@ async function updateUsage(user, project, model, staging, cost) {
 }
 
 exports.lambdaHandler = async (event, context) => {
-    const user = event.user;
-    const project = event.project || 'N/A';
-    const staging = process.env.STAGING;
-    const content = atob(event.content);
-    const headers = event.headers;
-    headers.authorization = `Bearer ${process.env.OPENAI_API_KEY}`;
-    headers['openai-organization'] = process.env.OPENAI_ORGANIZATION;
-    let model = headers['openai-model'] || JSON.parse(content).model;
+    const headers = {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'openai-organization': process.env.OPENAI_ORGANIZATION,
+    };
+    if (context.headers['openai-model']) {
+        headers['openai-model'] = context.headers['openai-model'];
+    }
+    const body = event.body;
+    let model = headers['openai-model'] || JSON.parse(body).model;
     if (!prices[model]) {
         model = model.substring(0, model.lastIndexOf('-'));
+    }
+    const user = 'fulano';
+    const project = 'hello';
+    const staging = context.functionName.split('-').pop();
+    let url = 'https://api.openai.com/v1' + event.rawPath;
+    if (event.rawQueryString && event.rawQueryString != "") {
+        url = url + '?' + event.rawQueryString;
     }
 
     let key, result;
     if (memcachedClient && !event.nocache) {
-        key = crypto.createHash('sha256').update(event.content).digest('hex');
+        key = crypto.createHash('sha256').update(body).digest('hex');
         result = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
             if (err) throw err;
             resolve(data)
@@ -134,9 +143,9 @@ exports.lambdaHandler = async (event, context) => {
     }
 
     const httpResult = await axios({
-        method: event.method,
-        url: event.url,
-        data: content,
+        method: "POST",
+        url: url,
+        data: body,
         headers: headers
     });
 
@@ -153,7 +162,7 @@ exports.lambdaHandler = async (event, context) => {
     }
 
     const response = {
-        content: btoa(JSON.stringify(httpResult.data)),
+        body: JSON.stringify(httpResult.data),
         headers: httpResult.headers,
         reason_phrase: httpResult.statusText,
         status_code: httpResult.status
@@ -173,29 +182,26 @@ exports.lambdaHandler = async (event, context) => {
 };
 
 if (require.main === module) {
-    process.env.STAGING = "dev";
-
     const event = {
-        method: "POST",
-        url: "https://api.openai.com/v1/chat/completions",
-        content: btoa(
-            JSON.stringify({
-                messages: [
-                    { role: "user", content: "Hello world" }
-                ]
-            })
-        ),
+        rawPath: "/chat/completions",
+        body: JSON.stringify({
+            messages: [
+                { role: "user", content: "Hello world" }
+            ]
+        }),
+    };
+    const context = {
+        functionName: "openai-proxy-dev",
         headers: {
-            "content-type": "application/json",
             "openai-model": "gpt-3.5-turbo-0613",
+            "user": "fulano",
+            "project": "hello",
         },
-        project: "hello",
-        user: "fulano"
     };
 
-    exports.lambdaHandler(event, null)
+    exports.lambdaHandler(event, context)
         .then(response => {
-            console.log(atob(response.content.toString()));
+            console.log(response.body.toString());
         })
         .catch(error => console.error(error));
 }
