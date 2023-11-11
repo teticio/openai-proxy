@@ -4,6 +4,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const pipeline = require('util').promisify(require('stream').pipeline);
 const { PassThrough, Readable, Writable } = require('stream');
+const { log } = require('console');
 
 const cacheEndpoint = process.env.ELASTICACHE || '';
 const cachePort = 11211;
@@ -115,8 +116,8 @@ class BufferStream extends PassThrough {
     }
 
     _write(chunk, encoding, callback) {
-        this._buffer.push(chunk);
         super._write(chunk, encoding, callback);
+        this._buffer.push(chunk);
     }
 
     getBuffer() {
@@ -133,8 +134,9 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
     // if (context.headers['openai-model']) {
     //     headers['openai-model'] = context.headers['openai-model'];
     // }
-    const body = event.body;
-    let model = headers['openai-model'] || JSON.parse(body).model;
+    const body = JSON.parse(event.body);
+    // let model = headers['openai-model'] || JSON.parse(body).model;
+    let model = body.model;
     if (!prices[model]) {
         model = model.substring(0, model.lastIndexOf('-'));
     }
@@ -146,10 +148,11 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
         url = url + '?' + event.rawQueryString;
     }
 
-    let key;
+    let key, result;
     if (memcachedClient && !event.nocache) {
-        key = crypto.createHash('sha256').update(body).digest('hex');
-        const result = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
+        key = crypto.createHash('sha256').update(event.body).digest('hex');
+        console.log('Cache key: ' + key)
+        result = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
             if (err) throw err;
             resolve(data)
         }));
@@ -182,7 +185,7 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
     const httpResult = await axios({
         method: 'POST',
         url: url,
-        data: body,
+        data: event.body,
         headers: headers,
         responseType: 'stream',
     });
@@ -194,20 +197,30 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
         responseStream,
     );
 
-    const response = JSON.parse(bufferStream.getBuffer().toString());
-    if (!response.error) {
-        const cost = calculateCost(
-            model,
-            response.usage.prompt_tokens,
-            response.usage.completion_tokens
-        );
-        await updateUsage(user, project, model, staging, cost);
-        await updateUsage('*', project, model, staging, cost);
-        await updateUsage('*', project, '*', staging, cost);
-    }
+    const buffer = bufferStream.getBuffer().toString();
+    if (!body.stream) {
+        const response = JSON.parse(buffer);
+        if (!response.error) {
+            const cost = calculateCost(
+                model,
+                response.usage.prompt_tokens,
+                response.usage.completion_tokens
+            );
+            await updateUsage(user, project, model, staging, cost);
+            await updateUsage('*', project, model, staging, cost);
+            await updateUsage('*', project, '*', staging, cost);
+        }
+    } // TODO: calculate usage for streamed responses
 
     if (memcachedClient && !event.nocache) {
-        await memcachedClient.set(key, JSON.stringify(response), TTL, (err) => console.error(err));
+        await new Promise((resolve, reject) => memcachedClient.set(key, buffer, TTL, (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                log('Cached');
+                resolve();
+            }
+        }));
     }
 });
 
@@ -216,17 +229,14 @@ if (require.main === module) { // for testing
         rawPath: '/chat/completions',
         body: JSON.stringify({
             messages: [
-                { role: 'user', content: 'Hello world' }
-            ]
+                { role: 'user', content: 'Tell me a story in 100 words' }
+            ],
+            model: 'gpt-3.5-turbo-0613',
+            stream: true,
         }),
     };
     const context = {
         functionName: 'openai-proxy-dev',
-        headers: {
-            'openai-model': 'gpt-3.5-turbo-0613',
-            'user': 'fulano',
-            'project': 'hello',
-        },
     };
 
     exports.lambdaHandler(event, context)

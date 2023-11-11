@@ -2,9 +2,12 @@ import importlib
 import json
 import os
 import sys
+from typing import Any, TypeVar, Union
 
 import boto3
+import httpx
 from packaging import version
+from requests_aws4auth import AWS4Auth
 
 os.environ["OPENAI_API_KEY"] = "sk-XXX"
 
@@ -56,7 +59,7 @@ if major == 0:  # TODO
     import requests
     import threading
     import time
-    from typing import Any, Dict, Optional, Tuple, Union
+    from typing import  Dict, Optional, Tuple
 
     from openai import (
         error,
@@ -129,14 +132,9 @@ if major == 0:  # TODO
     openai_orig.api_requestor.APIRequestor.request_raw = _request_raw_proxy
 
 else:
-    from typing import Any, TypeVar, Union
-
-    import httpx
-    from boto3 import Session
     from openai._client import OpenAI
     from openai._base_client import BaseClient
     from openai._streaming import Stream, AsyncStream
-    from requests_aws4auth import AWS4Auth
 
     _HttpxClientT = TypeVar(
         "_HttpxClientT", bound=Union[httpx.Client, httpx.AsyncClient]
@@ -145,7 +143,7 @@ else:
         "_DefaultStreamT", bound=Union[Stream[Any], AsyncStream[Any]]
     )
 
-    session = Session()
+    session = boto3.Session()
     credentials = session.get_credentials()
     aws_auth = AWS4Auth(
         credentials.access_key,
