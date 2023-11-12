@@ -2,11 +2,13 @@
 # get v0 working
 # test with langchain
 # tidy and refactor
-# refresh auth
+# refresh auth Exception has occurred: PermissionDeniedError       (note: full exception trace is shown but execution is paused at: _run_module_as_main)
+# Error code: 403 - {'message': 'The security token included in the request is expired'}
+
+from time import sleep
 
 # Make sure you do this before importing any packages that use openai under the hood.
 import openai_wrapi as openai
-from time import sleep
 
 # User must have IAM permissions to invoke openai-admin-dev.
 openai.set_limit(staging="dev", project="hello", limit=10)

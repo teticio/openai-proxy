@@ -79,6 +79,12 @@ By default, the project associated with any API calls will be `N/A`. In order to
 openai.set_project("my-project")
 ```
 
+To set the staging account:
+
+```python
+openai.set_staging("dev")
+```
+
 If you want to disable caching (enabled by default):
     
 ```python
@@ -88,7 +94,7 @@ openai.set_caching(False)
 Alternatively, you can create a client using
 
 ```python
-client = openai.OpenAIProxy(project="my-project")
+client = openai.OpenAIProxy(project="my-project", staging="dev", caching=True)
 ```
 
 If you want to use the proxy from somewhere other than Python, you can use the URL of the Lambda function in place of the OpenAI endpoint, provided you authenticate with AWS appropriately. In fact, you can even make the Lambda function URL public and restrict the access with CORS, so that it can be used directly in a front end application.
