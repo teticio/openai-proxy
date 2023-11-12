@@ -134,14 +134,14 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
         }
         const headers = {
             'Content-Type': 'application/json',
-            'authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-            'openai-organization': process.env.OPENAI_ORGANIZATION,
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'OpenAI-Organization': process.env.OPENAI_ORG_ID,
         };
         const caching = event.headers['openai-proxy-caching'] || '1';
         const user = event.headers['openai-proxy-user'];
         const project = event.headers['openai-proxy-project'] || 'N/A';
         const staging = context.functionName.split('-').pop();
-        console.log(user, project, staging);
+        console.log(user, project, model, staging);
         let url = 'https://api.openai.com/v1' + event.rawPath;
         if (event.rawQueryString && event.rawQueryString != '') {
             url = url + '?' + event.rawQueryString;

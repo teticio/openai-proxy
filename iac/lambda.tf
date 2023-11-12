@@ -67,9 +67,9 @@ resource "aws_lambda_function" "openai_proxy_dev" {
 
   environment {
     variables = {
-      ELASTICACHE         = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
-      OPENAI_API_KEY      = var.openai_api_key_dev
-      OPENAI_ORGANIZATION = var.openai_organization_dev
+      ELASTICACHE    = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
+      OPENAI_API_KEY = var.openai_api_key_dev
+      OPENAI_ORG_ID  = var.openai_org_id_dev
     }
   }
 
@@ -89,9 +89,9 @@ resource "aws_lambda_function" "openai_proxy_prod" {
 
   environment {
     variables = {
-      ELASTICACHE         = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
-      OPENAI_API_KEY      = var.openai_api_key_prod
-      OPENAI_ORGANIZATION = var.openai_organization_prod
+      ELASTICACHE    = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
+      OPENAI_API_KEY = var.openai_api_key_prod
+      OPENAI_ORG_Id  = var.openai_org_id_prod
     }
   }
 

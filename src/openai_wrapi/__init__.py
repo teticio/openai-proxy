@@ -1,11 +1,11 @@
 import importlib
 import json
-import os
 import sys
 from typing import Any, TypeVar, Union
 
 import boto3
 import httpx
+from httpx import URL
 from packaging import version
 from requests_aws4auth import AWS4Auth
 
@@ -99,7 +99,6 @@ if major == 0:  # TODO
 else:
     from openai._client import OpenAI
     from openai._base_client import BaseClient
-    from openai._models import FinalRequestOptions
     from openai._streaming import Stream, AsyncStream
 
     _HttpxClientT = TypeVar(
@@ -118,7 +117,6 @@ else:
         "lambda",
         session_token=credentials.token,
     )
-    url = f"https://{os.environ['OPENAI_API_KEY'].split('-')[1]}.lambda-url.{session.region_name}.on.aws/"
 
     class BaseClientProxy(BaseClient[_HttpxClientT, _DefaultStreamT]):
         custom_auth = aws_auth
@@ -132,18 +130,21 @@ else:
             **kwargs,
         ):
             super().__init__(**kwargs)
+            self.session = boto3.Session()
             self._custom_headers["openai-proxy-project"] = project
             self._custom_headers["openai-proxy-staging"] = staging
             self._custom_headers["openai-proxy-user"] = self.get_user()
             self._custom_headers["openai-proxy-caching"] = str(int(caching))
+            self._base_url = URL(self.get_base_url())
 
-        @staticmethod
-        def get_user():
-            session = boto3.Session()
-            profile = session.profile_name
-            profiles = session._session.full_config["profiles"]
+        def get_base_url(self):
+            return f"https://{self.api_key.split('-')[1]}.lambda-url.{session.region_name}.on.aws/"
+
+        def get_user(self):
+            profile = self.session.profile_name
+            profiles = self.session._session.full_config["profiles"]
             if profile in profiles:
-                config = session._session.full_config["profiles"][session.profile_name]
+                config = self.session._session.full_config["profiles"][session.profile_name]
                 if "source_profile" in config:
                     profile = config["source_profile"]
             user = (
@@ -153,8 +154,7 @@ else:
             )
             return user
 
-    client = OpenAIProxy(base_url=url)
-    client.base_url = url
+    client = OpenAIProxy()
 
     def set_project(project: str):
         client._custom_headers["openai-proxy-project"] = project

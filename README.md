@@ -37,14 +37,14 @@ pip install .
 Ideally, you should have one OpenAI account per staging account (dev, prod). Create a `terraform.tfvars` file in the `iac` directory with the following variables:
 
 ```terraform
-profile                  = "default"   # AWS profile to use
-region                   = "eu-west-2" # AWS region to deploy to
-openai_api_key_dev       = "sk-XXX"    # OpenAI API key for dev account
-openai_organization_dev  = "org-XXX"   # OpenAI organization ID for dev account
-openai_api_key_prod      = "sk-YYY"    # OpenAI API key for prod account
-openai_organization_prod = "org-YYY"   # OpenAI organization ID for prod account
-num_azs                  = 3           # Number of availability zones to deploy to (limited by available Elastic IP addresses)
-use_elasticache          = true        # Whether to use ElastiCache Memcache
+profile             = "default"   # AWS profile to use
+region              = "eu-west-2" # AWS region to deploy to
+openai_api_key_dev  = "sk-XXX"    # OpenAI API key for dev account
+openai_org_id_dev   = "org-XXX"   # OpenAI organization ID for dev account
+openai_api_key_prod = "sk-YYY"    # OpenAI API key for prod account
+openai_org_id_prod  = "org-YYY"   # OpenAI organization ID for prod account
+num_azs             = 3           # Number of availability zones to deploy to (limited by available Elastic IP addresses)
+use_elasticache     = true        # Whether to use ElastiCache Memcache
 ```
 
 To deploy run:
@@ -56,7 +56,7 @@ terraform apply -auto-approve
 ```
 
 This will create
-- A Lambda function to proxy calls to the OpenAI API per staging account (dev, prod).
+- A streaming Lambda function URL to proxy calls to the OpenAI API per staging account (dev, prod).
 - A Lambda function to set usage limits and flush the cache per staging account (dev, prod).
 - A DynamoDB table to store usage and limits.
 - An optional ElastiCache Memcached cluster to cache OpenAI API responses.
@@ -84,6 +84,14 @@ If you want to disable caching (enabled by default):
 ```python
 openai.set_caching(False)
 ```
+
+Alternatively, you can create a client using
+
+```python
+client = openai.OpenAIProxy(project="my-project")
+```
+
+If you want to use the proxy from somewhere other than Python, you can use the URL of the Lambda function in place of the OpenAI endpoint, provided you authenticate with AWS appropriately. In fact, you can even make the Lambda function URL public and restrict the access with CORS, so that it can be used directly in a front end application.
 
 ## Admins
 

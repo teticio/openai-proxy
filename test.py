@@ -2,6 +2,7 @@
 # get v0 working
 # test with langchain
 # tidy and refactor
+# refresh auth
 
 # Make sure you do this before importing any packages that use openai under the hood.
 import openai_wrapi as openai

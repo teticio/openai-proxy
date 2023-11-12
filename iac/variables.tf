@@ -10,7 +10,7 @@ variable "openai_api_key_dev" {
   type = string
 }
 
-variable "openai_organization_dev" {
+variable "openai_org_id_dev" {
   type = string
 }
 
@@ -18,7 +18,7 @@ variable "openai_api_key_prod" {
   type = string
 }
 
-variable "openai_organization_prod" {
+variable "openai_org_id_prod" {
   type = string
 }
 
