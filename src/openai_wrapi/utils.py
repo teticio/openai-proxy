@@ -8,13 +8,10 @@ lambda_client = boto3.client("lambda")
 
 
 def get_aws_auth():
-    credentials = session.get_credentials()
     aws_auth = AWS4Auth(
-        credentials.access_key,
-        credentials.secret_key,
-        session.region_name,
-        "lambda",
-        session_token=credentials.token,
+        region=session.region_name,
+        service="lambda",
+        refreshable_credentials=session.get_credentials(),
     )
     return aws_auth
 

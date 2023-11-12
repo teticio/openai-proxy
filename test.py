@@ -1,9 +1,6 @@
 # TODO
 # get v0 working
 # test with langchain
-# tidy and refactor
-# refresh auth Exception has occurred: PermissionDeniedError       (note: full exception trace is shown but execution is paused at: _run_module_as_main)
-# Error code: 403 - {'message': 'The security token included in the request is expired'}
 
 from time import sleep
 
