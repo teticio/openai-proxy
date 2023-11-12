@@ -1,5 +1,4 @@
 # TODO
-# project, user, nocache
 # handle errors, add timeout
 # get v0 working
 # test with langchain
@@ -11,7 +10,7 @@ from time import sleep
 
 # User must have IAM permissions to invoke openai-admin-dev
 openai.set_limit(staging="dev", project="hello", limit=10)
-openai.flush_cache()
+openai.flush_cache(staging="dev")
 
 # Limits must have been set for the project
 openai.set_project("hello")

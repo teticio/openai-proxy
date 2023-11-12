@@ -126,26 +126,28 @@ class BufferStream extends PassThrough {
 }
 
 exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream, context) => {
-    const headers = {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'openai-organization': process.env.OPENAI_ORGANIZATION,
-    };
     const body = JSON.parse(event.body);
     let model = body.model;
     if (!prices[model]) {
         model = model.substring(0, model.lastIndexOf('-'));
     }
-    const user = 'fulano';
-    const project = 'hello';
+    const headers = {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'openai-organization': process.env.OPENAI_ORGANIZATION,
+    };
+    const caching = event.headers['openai-proxy-caching'] || '1';
+    const user = event.headers['openai-proxy-user'];
+    const project = event.headers['openai-proxy-project'] || 'N/A';
     const staging = context.functionName.split('-').pop();
+    console.log(user, project, staging);
     let url = 'https://api.openai.com/v1' + event.rawPath;
     if (event.rawQueryString && event.rawQueryString != '') {
         url = url + '?' + event.rawQueryString;
     }
 
     let key, result;
-    if (memcachedClient && !event.nocache) {
+    if (memcachedClient && caching != '0') {
         key = crypto.createHash('sha256').update(event.body).digest('hex');
         console.log('Cache key: ' + key)
         result = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
@@ -224,7 +226,7 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
         await updateUsage('*', project, '*', staging, cost);
     }
 
-    if (memcachedClient && !event.nocache) {
+    if (memcachedClient && caching != '0') {
         await new Promise((resolve, reject) => memcachedClient.set(key, buffer, TTL, (err) => {
             if (err) {
                 reject(err);
@@ -246,6 +248,10 @@ if (require.main === module) { // for testing
             model: 'gpt-3.5-turbo-0613',
             stream: true,
         }),
+        headers: {
+            'openai-proxy-user': 'fulano',
+            'openai-proxy-project': 'hello',
+        },
     };
     const context = {
         functionName: 'openai-proxy-dev',

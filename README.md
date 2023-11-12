@@ -69,7 +69,9 @@ In order to use the proxy in your Python code, provided you have the appropriate
 import openai_wrapi as openai
 ```
 
-You no longer need set the OpenAI API key or organization ID as these are securely stored in the corresponding Lambda functions. If you plan to use packages such as `langchain` which use the `openai` package internally, you need only ensure you have previously imported `openai_wrapi`.
+You no longer need set your OpenAI API key or organization ID as these are securely stored in the corresponding Lambda functions. Instead, you should set your `OPENAI_API_KEY` environment variable to be `sk-XXX`, where `XXX` corresponds to the URL `https://XXX.lambda-url.region.on.aws/` of your Lambda function, as output by Terraform.
+
+If you plan to use packages such as `langchain` which use the `openai` package internally, you need only ensure you have previously imported `openai_wrapi`.
 
 By default, the project associated with any API calls will be `N/A`. In order to set the project name:
 
@@ -102,7 +104,7 @@ openai.set_limits(
 - flush the cache:
 
 ```python
-openai.flush_cache()
+openai.flush_cache(staging="dev")
 ```
 
 Note that this wrapper currently works for major versions 0 and 1 of the `openai` package.

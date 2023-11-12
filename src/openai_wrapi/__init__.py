@@ -9,47 +9,12 @@ import httpx
 from packaging import version
 from requests_aws4auth import AWS4Auth
 
-os.environ["OPENAI_API_KEY"] = "sk-XXX"
-
 openai_orig = importlib.import_module("openai")
 parsed_version = version.parse(openai_orig.__version__)
 major = parsed_version.major
 assert (
     parsed_version.major == 0 and parsed_version >= version.parse("0.28.1")
-) or parsed_version >= version.parse("1.1.1")
-
-project = "N/A"
-staging = "dev"
-caching = True
-
-
-def set_project(project_name: str):
-    global project
-    project = project_name
-
-
-def set_staging(staging_name: str):
-    global staging
-    staging = staging_name
-
-
-def set_caching(caching_value: bool):
-    global caching
-    caching = caching_value
-
-
-def get_user():
-    session = boto3.Session()
-    profile = session.profile_name
-    profiles = session._session.full_config["profiles"]
-    if profile in profiles:
-        config = session._session.full_config["profiles"][session.profile_name]
-        if "source_profile" in config:
-            profile = config["source_profile"]
-    user = (
-        boto3.Session(profile_name=profile).client("sts").get_caller_identity()["Arn"]
-    )
-    return user
+) or parsed_version >= version.parse("1.2.3")
 
 
 globals().update(vars(openai_orig))
@@ -59,7 +24,7 @@ if major == 0:  # TODO
     import requests
     import threading
     import time
-    from typing import  Dict, Optional, Tuple
+    from typing import Dict, Optional, Tuple
 
     from openai import (
         error,
@@ -134,6 +99,7 @@ if major == 0:  # TODO
 else:
     from openai._client import OpenAI
     from openai._base_client import BaseClient
+    from openai._models import FinalRequestOptions
     from openai._streaming import Stream, AsyncStream
 
     _HttpxClientT = TypeVar(
@@ -152,16 +118,49 @@ else:
         "lambda",
         session_token=credentials.token,
     )
-    url = "https://hmvexdwxxex245kwvsbkl6lggy0grgcv.lambda-url.eu-central-1.on.aws/"
+    url = f"https://{os.environ['OPENAI_API_KEY'].split('-')[1]}.lambda-url.{session.region_name}.on.aws/"
 
     class BaseClientProxy(BaseClient[_HttpxClientT, _DefaultStreamT]):
         custom_auth = aws_auth
 
     class OpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], OpenAI):
-        pass
+        def __init__(
+            self,
+            project: str = "N/A",
+            staging: str = "dev",
+            caching: str = "1",
+            **kwargs,
+        ):
+            super().__init__(**kwargs)
+            self._custom_headers["openai-proxy-project"] = project
+            self._custom_headers["openai-proxy-staging"] = staging
+            self._custom_headers["openai-proxy-user"] = self.get_user()
+            self._custom_headers["openai-proxy-caching"] = str(int(caching))
+
+        @staticmethod
+        def get_user():
+            session = boto3.Session()
+            profile = session.profile_name
+            profiles = session._session.full_config["profiles"]
+            if profile in profiles:
+                config = session._session.full_config["profiles"][session.profile_name]
+                if "source_profile" in config:
+                    profile = config["source_profile"]
+            user = (
+                boto3.Session(profile_name=profile)
+                .client("sts")
+                .get_caller_identity()["Arn"]
+            )
+            return user
 
     client = OpenAIProxy(base_url=url)
     client.base_url = url
+
+    def set_project(project: str):
+        client._custom_headers["openai-proxy-project"] = project
+
+    def set_caching(caching: bool):
+        client._custom_headers["openai-proxy-caching"] = str(int(caching))
 
     for attr in dir(client):
         if not attr.startswith("__"):
@@ -169,7 +168,6 @@ else:
 
 
 lambda_client = boto3.client("lambda")
-
 
 def set_limit(
     limit: float, staging: str, project: str, model: str = "*", user: str = "*"
@@ -191,7 +189,7 @@ def set_limit(
         raise Exception(result["errorMessage"])
 
 
-def flush_cache():
+def flush_cache(staging: str):
     payload = {
         "flush_cache": True,
     }
