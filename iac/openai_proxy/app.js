@@ -134,7 +134,7 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
         }
         const headers = {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
             'openai-organization': process.env.OPENAI_ORGANIZATION,
         };
         const caching = event.headers['openai-proxy-caching'] || '1';
@@ -147,17 +147,17 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
             url = url + '?' + event.rawQueryString;
         }
 
-        let key, result;
+        let key;
         if (memcachedClient && caching != '0') {
             key = crypto.createHash('sha256').update(event.body).digest('hex');
             console.log('Cache key: ' + key)
-            cachedResponse = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
+            const cachedResponse = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
                 if (err) throw err;
                 resolve(data)
             }));
             if (cachedResponse) {
                 console.log('Cache hit');
-                responseStream.write(result);
+                responseStream.write(cachedResponse);
                 responseStream.end();
                 return;
             }
