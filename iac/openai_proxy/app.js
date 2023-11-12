@@ -126,115 +126,142 @@ class BufferStream extends PassThrough {
 }
 
 exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream, context) => {
-    const body = JSON.parse(event.body);
-    let model = body.model;
-    if (!prices[model]) {
-        model = model.substring(0, model.lastIndexOf('-'));
-    }
-    const headers = {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'openai-organization': process.env.OPENAI_ORGANIZATION,
-    };
-    const caching = event.headers['openai-proxy-caching'] || '1';
-    const user = event.headers['openai-proxy-user'];
-    const project = event.headers['openai-proxy-project'] || 'N/A';
-    const staging = context.functionName.split('-').pop();
-    console.log(user, project, staging);
-    let url = 'https://api.openai.com/v1' + event.rawPath;
-    if (event.rawQueryString && event.rawQueryString != '') {
-        url = url + '?' + event.rawQueryString;
-    }
+    try {
+        const body = JSON.parse(event.body);
+        let model = body.model;
+        if (!prices[model]) {
+            model = model.substring(0, model.lastIndexOf('-'));
+        }
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'openai-organization': process.env.OPENAI_ORGANIZATION,
+        };
+        const caching = event.headers['openai-proxy-caching'] || '1';
+        const user = event.headers['openai-proxy-user'];
+        const project = event.headers['openai-proxy-project'] || 'N/A';
+        const staging = context.functionName.split('-').pop();
+        console.log(user, project, staging);
+        let url = 'https://api.openai.com/v1' + event.rawPath;
+        if (event.rawQueryString && event.rawQueryString != '') {
+            url = url + '?' + event.rawQueryString;
+        }
 
-    let key, result;
-    if (memcachedClient && caching != '0') {
-        key = crypto.createHash('sha256').update(event.body).digest('hex');
-        console.log('Cache key: ' + key)
-        result = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
-            if (err) throw err;
-            resolve(data)
-        }));
-        if (result) {
-            console.log('Cache hit');
-            await pipeline(
-                Readable.from(Buffer.from(result)),
-                responseStream,
-            );
+        let key, result;
+        if (memcachedClient && caching != '0') {
+            key = crypto.createHash('sha256').update(event.body).digest('hex');
+            console.log('Cache key: ' + key)
+            cachedResponse = await new Promise(resolve => memcachedClient.get(key, (err, data) => {
+                if (err) throw err;
+                resolve(data)
+            }));
+            if (cachedResponse) {
+                console.log('Cache hit');
+                responseStream.write(result);
+                responseStream.end();
+                return;
+            }
+        }
+
+        let { usage: projectUsage, limit: projectLimit } = await getUsageAndLimit(`*#${project}#*#${staging}`);
+        if (projectLimit !== null && projectUsage >= projectLimit) {
+            throw new Error(`Project ${project} usage limit exceeded`);
+        }
+        let { usage: modelUsage, limit: modelLimit } = await getUsageAndLimit(`*#${project}#${model}#${staging}`);
+        if (modelLimit !== null && modelUsage >= modelLimit) {
+            throw new Error(`Project ${project} usage limit exceeded for model ${model}`);
+        }
+        if (projectLimit === null && modelLimit === null) {
+            throw new Error(`Project ${project} must have a usage limit`);
+        }
+        let { usage: userUsage, limit: userLimit } = await getUsageAndLimit(`${user}#${project}#${model}#${staging}`);
+        if (userLimit !== null && userUsage >= userLimit) {
+            throw new Error(`User ${user} usage limit exceeded for project ${project} and model ${model}`);
+        }
+
+        let httpResult;
+        try {
+            httpResult = await axios({
+                method: 'POST',
+                url: url,
+                data: event.body,
+                headers: headers,
+                responseType: 'stream',
+                timeout: 600 * 1000, // 10 minutes
+            });
+        } catch (error) {
+            console.error(error);
+            responseStream = awslambda.HttpResponseStream.from(responseStream, {
+                statusCode: error.response.status,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            responseStream.write(JSON.stringify({ message: error.message }));
+            responseStream.end();
             return;
         }
-    }
 
-    let { usage: projectUsage, limit: projectLimit } = await getUsageAndLimit(`*#${project}#*#${staging}`);
-    if (projectLimit !== null && projectUsage >= projectLimit) {
-        throw new Error(`Project ${project} usage limit exceeded`);
-    }
-    let { usage: modelUsage, limit: modelLimit } = await getUsageAndLimit(`*#${project}#${model}#${staging}`);
-    if (modelLimit !== null && modelUsage >= modelLimit) {
-        throw new Error(`Project ${project} usage limit exceeded for model ${model}`);
-    }
-    if (projectLimit === null && modelLimit === null) {
-        throw new Error(`Project ${project} must have a usage limit`);
-    }
-    let { usage: userUsage, limit: userLimit } = await getUsageAndLimit(`${user}#${project}#${model}#${staging}`);
-    if (userLimit !== null && userUsage >= userLimit) {
-        throw new Error(`User ${user} usage limit exceeded for project ${project} and model ${model}`);
-    }
-
-    const httpResult = await axios({
-        method: 'POST',
-        url: url,
-        data: event.body,
-        headers: headers,
-        responseType: 'stream',
-    });
-
-    bufferStream = new BufferStream();
-    await pipeline(
-        httpResult.data,
-        bufferStream,
-        responseStream,
-    );
-
-    const buffer = bufferStream.getBuffer().toString();
-    let prompt_tokens, completion_tokens;
-    if (!body.stream) {
-        const response = JSON.parse(buffer);
-        if (!response.error) {
-            prompt_tokens = response.usage.prompt_tokens;
-            completion_tokens = response.usage.completion_tokens;
-        }
-    } else {
-        const CHARS_PER_TOKEN = 4; // estimate tokens
-        prompt_tokens = parseInt(body.messages.reduce((acc, message) =>
-            acc + message.content.length, 0
-        ) / CHARS_PER_TOKEN);
-        let chunks = buffer.split('\n\n');
-        completion_tokens = parseInt(chunks.slice(0, chunks.length - 3).reduce((acc, chunk) =>
-            acc + JSON.parse(chunk.slice('data: '.length)).choices[0].delta.content.length, 0
-        ) / CHARS_PER_TOKEN);
-    }
-
-    if (prompt_tokens && completion_tokens) {
-        console.log('Usage: ' + prompt_tokens + ' input tokens + ' + completion_tokens + ' output tokens');
-        const cost = calculateCost(
-            model,
-            prompt_tokens,
-            completion_tokens
+        bufferStream = new BufferStream();
+        await pipeline(
+            httpResult.data,
+            bufferStream,
+            responseStream,
         );
-        await updateUsage(user, project, model, staging, cost);
-        await updateUsage('*', project, model, staging, cost);
-        await updateUsage('*', project, '*', staging, cost);
-    }
 
-    if (memcachedClient && caching != '0') {
-        await new Promise((resolve, reject) => memcachedClient.set(key, buffer, TTL, (err) => {
-            if (err) {
-                reject(err);
-            } else {
-                log('Cached');
-                resolve();
+        const buffer = bufferStream.getBuffer().toString();
+        let prompt_tokens, completion_tokens;
+        if (!body.stream) {
+            const response = JSON.parse(buffer);
+            if (!response.error) {
+                prompt_tokens = response.usage.prompt_tokens;
+                completion_tokens = response.usage.completion_tokens;
             }
-        }));
+        } else {
+            const CHARS_PER_TOKEN = 4; // estimate tokens
+            prompt_tokens = parseInt(body.messages.reduce((acc, message) =>
+                acc + message.content.length, 0
+            ) / CHARS_PER_TOKEN);
+            let chunks = buffer.split('\n\n');
+            completion_tokens = parseInt(chunks.slice(0, chunks.length - 3).reduce((acc, chunk) =>
+                acc + JSON.parse(chunk.slice('data: '.length)).choices[0].delta.content.length, 0
+            ) / CHARS_PER_TOKEN);
+        }
+
+        if (prompt_tokens && completion_tokens) {
+            console.log('Usage: ' + prompt_tokens + ' input tokens + ' + completion_tokens + ' output tokens');
+            const cost = calculateCost(
+                model,
+                prompt_tokens,
+                completion_tokens
+            );
+            await updateUsage(user, project, model, staging, cost);
+            await updateUsage('*', project, model, staging, cost);
+            await updateUsage('*', project, '*', staging, cost);
+        }
+
+        if (memcachedClient && caching != '0') {
+            await new Promise((resolve, reject) => memcachedClient.set(key, buffer, TTL, (err) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    log('Cached');
+                    resolve();
+                }
+            }));
+        }
+
+    } catch (error) {
+        console.error(error);
+        responseStream = awslambda.HttpResponseStream.from(responseStream, {
+            statusCode: 500,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+        responseStream.write(JSON.stringify({ message: error.message, stack: error.stack }));
+        responseStream.end();
+        return;
     }
 });
 
