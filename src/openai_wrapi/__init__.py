@@ -1,5 +1,4 @@
 import importlib
-import os
 import sys
 
 from packaging import version
@@ -14,7 +13,7 @@ assert (
 ) or parsed_version >= version.parse("1.2.3")
 
 
-if major == 0:  # TODO
+if major == 0:
     from .proxy0 import (
         _request_raw_proxy,
         set_caching,
