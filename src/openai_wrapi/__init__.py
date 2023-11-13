@@ -26,15 +26,7 @@ else:
 
     globals().update(vars(openai_orig))
     sys.modules["openai"] = sys.modules["openai_wrapi"]
-
     client = OpenAIProxy()
-
-    def set_project(project: str):
-        client._custom_headers["openai-proxy-project"] = project
-
-    def set_caching(caching: bool):
-        client._custom_headers["openai-proxy-caching"] = str(int(caching))
-
     for attr in dir(client):
         if not attr.startswith("__"):
             globals()[attr] = getattr(client, attr)

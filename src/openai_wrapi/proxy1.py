@@ -30,3 +30,9 @@ class OpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], OpenAI):
         self._custom_headers["openai-proxy-user"] = get_user()
         self._custom_headers["openai-proxy-caching"] = str(int(caching))
         self._base_url = URL(get_base_url(self.api_key.split("-")[1]))
+
+    def set_project(self, project: str):
+        self._custom_headers["openai-proxy-project"] = project
+
+    def set_caching(self, caching: bool):
+        self._custom_headers["openai-proxy-caching"] = str(int(caching))
