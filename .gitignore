@@ -2,6 +2,7 @@
 __pycache__
 openai_wrapi.egg-info
 dist
+build
 .env
 .terraform*
 terraform.*
