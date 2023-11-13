@@ -67,4 +67,7 @@ blue_hues_normalized = [
     (0.498, 1.000, 1.000),  # Light Cyan
 ]
 
-st.bar_chart(df, color=blue_hues_normalized[0 : len(df.columns)])
+# Workaround bug with one column.
+if len(df.columns) == 1:
+    df.columns = df.columns.map(lambda _: _.replace(".", "dot"))
+st.bar_chart(df, color=blue_hues_normalized[0  : len(df.columns)])
