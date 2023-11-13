@@ -1,3 +1,4 @@
+import os
 from typing import Any, TypeVar, Union
 
 import httpx
@@ -19,9 +20,9 @@ class BaseClientProxy(BaseClient[_HttpxClientT, _DefaultStreamT]):
 class OpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], OpenAI):
     def __init__(
         self,
-        project: str = "N/A",
-        staging: str = "dev",
-        caching: str = "1",
+        project: str = os.environ.get("OPENAI_DEFAULT_PROJECT", "N/A"),
+        staging: str = os.environ.get("OPENAI_DEFAULT_STAGING", "dev"),
+        caching: str = os.environ.get("OPENAI_DEFAULT_CACHING", "1"),
         **kwargs,
     ):
         super().__init__(**kwargs)

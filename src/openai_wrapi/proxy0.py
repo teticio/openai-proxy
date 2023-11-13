@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 from typing import Dict, Optional, Tuple, Union
@@ -14,10 +15,10 @@ from openai.api_requestor import (
 from .utils import get_aws_auth, get_base_url, get_user
 
 _custom_headers = {
-    "openai-proxy-project": "N/A",
-    "openai-proxy-staging": "dev",
     "openai-proxy-user": get_user(),
-    "openai-proxy-caching": "1",
+    "openai-proxy-project": os.environ.get("OPENAI_DEFAULT_PROJECT", "N/A"),
+    "openai-proxy-staging": os.environ.get("OPENAI_DEFAULT_STAGING", "dev"),
+    "openai-proxy-caching": os.environ.get("OPENAI_DEFAULT_CACHING", "1"),
 }
 _base_url = get_base_url(api_key.split("-")[1])
 _custom_auth = get_aws_auth()

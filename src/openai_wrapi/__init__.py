@@ -35,3 +35,6 @@ else:
     for attr in dir(client):
         if not attr.startswith("__"):
             globals()[attr] = getattr(client, attr)
+    OpenAI = OpenAIProxy
+
+sys.modules["openai"] = sys.modules["openai_wrapi"]

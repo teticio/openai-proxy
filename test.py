@@ -1,7 +1,3 @@
-# TODO
-# get v0 working
-# test with langchain
-
 from time import sleep
 
 # Make sure you do this before importing any packages that use openai under the hood.

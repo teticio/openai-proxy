@@ -104,6 +104,16 @@ Alternatively, you can create a client using
 client = openai.OpenAIProxy(project="my-project", staging="dev", caching=True)
 ```
 
+It is also possible to set these parameters using environment variables:
+
+```python
+os.environ["OPENAI_DEFAULT_PROJECT"] = "hello"
+os.environ["OPENAI_DEFAULT_STAGING"] = "dev"
+os.environ["OPENAI_DEFAULT_CACHING"] = "0"
+```
+
+(Note that it is necessary to do this when using the latest version of `langchain`, which now explicitly creates a new OpenAI client.)
+
 If you want to use the proxy from somewhere other than Python, you can use the URL of the Lambda function in place of the OpenAI endpoint, provided you authenticate with AWS appropriately. In fact, you can even make the Lambda function URL public and restrict the access with CORS, so that it can be used directly in a frontend application.
 
 ## Admins
@@ -135,3 +145,6 @@ To see the usage in a dashboard, run
 ```python
 streamlit run app.py
 ```
+
+## TODO
+- AsyncOpenAI

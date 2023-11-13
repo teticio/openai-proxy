@@ -1,6 +1,6 @@
 {
   "name": "openai_proxy",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "OpenAI API proxy for fine-grained cost tracking & control and caching of responses",
   "main": "app.js",
   "scripts": {
