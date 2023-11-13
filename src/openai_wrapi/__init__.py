@@ -14,7 +14,12 @@ assert (
 
 
 if major == 0:  # TODO
-    from .proxy0 import _request_raw_proxy
+    from .proxy0 import (
+        _request_raw_proxy,
+        set_caching,
+        set_project,
+        set_staging,
+    )  # noqa: F401
 
     # Monkey patch
     openai_orig.api_requestor.APIRequestor.request_raw = _request_raw_proxy

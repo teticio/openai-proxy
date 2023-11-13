@@ -1,9 +1,13 @@
+if (typeof (awslambda) === 'undefined') {
+    // For testing
+    global.awslambda = require('./awslambda');
+}
 const { DynamoDBClient, GetItemCommand, UpdateItemCommand } = require('@aws-sdk/client-dynamodb');
 const Memcached = require('memcached');
 const axios = require('axios');
 const crypto = require('crypto');
 const pipeline = require('util').promisify(require('stream').pipeline);
-const { PassThrough, Readable, Writable } = require('stream');
+const { PassThrough } = require('stream');
 const { log } = require('console');
 
 const cacheEndpoint = process.env.ELASTICACHE || '';
@@ -56,7 +60,7 @@ async function updateUsage(user, project, model, staging, cost) {
         TableName: 'openai-usage',
         Key: {
             'composite_key': {
-                'S': compositeKey
+                'S': compositeKey,
             }
         },
         UpdateExpression: 'SET #month = if_not_exists(#month, :zero) + :cost, ' +
@@ -66,7 +70,7 @@ async function updateUsage(user, project, model, staging, cost) {
                 'N': '0',
             },
             ':cost': {
-                'N': String(cost)
+                'N': String(cost),
             },
             ':user': {
                 'S': user,
@@ -94,21 +98,6 @@ async function updateUsage(user, project, model, staging, cost) {
     await ddbClient.send(command);
 }
 
-if (typeof awslambda === 'undefined') { // stub for testing
-    global.awslambda = {
-        streamifyResponse(lambdaHandler) {
-            return async (event, context) => {
-                responseStream = Writable();
-                responseStream._write = (chunk, encoding, callback) => {
-                    console.log(chunk.toString());
-                    callback();
-                }
-                await lambdaHandler(event, responseStream, context);
-            };
-        }
-    }
-}
-
 class BufferStream extends PassThrough {
     constructor(options) {
         super(options);
@@ -134,6 +123,7 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
         }
         const headers = {
             'Content-Type': 'application/json',
+            'Accept': 'text/event-stream',
             'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
             'OpenAI-Organization': process.env.OPENAI_ORG_ID,
         };
@@ -157,7 +147,12 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
             }));
             if (cachedResponse) {
                 console.log('Cache hit');
-                responseStream.write(cachedResponse);
+                const httpResponse = JSON.parse(cachedResponse);
+                responseStream = awslambda.HttpResponseStream.from(responseStream, {
+                    statusCode: httpResponse.status,
+                    headers: httpResponse.headers,
+                });
+                responseStream.write(httpResponse.data);
                 responseStream.end();
                 return;
             }
@@ -179,15 +174,19 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
             throw new Error(`User ${user} usage limit exceeded for project ${project} and model ${model}`);
         }
 
-        let httpResult;
+        let httpResponse;
         try {
-            httpResult = await axios({
+            httpResponse = await axios({
                 method: 'POST',
                 url: url,
                 data: event.body,
                 headers: headers,
                 responseType: 'stream',
                 timeout: 600 * 1000, // 10 minutes
+            });
+            responseStream = awslambda.HttpResponseStream.from(responseStream, {
+                statusCode: httpResponse.status,
+                headers: httpResponse.headers,
             });
         } catch (error) {
             console.error(error);
@@ -204,7 +203,7 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
 
         bufferStream = new BufferStream();
         await pipeline(
-            httpResult.data,
+            httpResponse.data,
             bufferStream,
             responseStream,
         );
@@ -241,7 +240,12 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
         }
 
         if (memcachedClient && caching != '0') {
-            await new Promise((resolve, reject) => memcachedClient.set(key, buffer, TTL, (err) => {
+            const cachedResponse = JSON.stringify({
+                data: buffer,
+                status: httpResponse.status,
+                headers: httpResponse.headers,
+            });
+            await new Promise((resolve, reject) => memcachedClient.set(key, cachedResponse, TTL, (err) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -253,19 +257,22 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
 
     } catch (error) {
         console.error(error);
-        responseStream = awslambda.HttpResponseStream.from(responseStream, {
-            statusCode: 500,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-        });
+        try {
+            responseStream = awslambda.HttpResponseStream.from(responseStream, {
+                statusCode: 500,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+        } catch (error) {
+        }
         responseStream.write(JSON.stringify({ message: error.message, stack: error.stack }));
         responseStream.end();
         return;
     }
 });
 
-if (require.main === module) { // for testing
+if (require.main === module) { // For testing
     const event = {
         rawPath: '/chat/completions',
         body: JSON.stringify({

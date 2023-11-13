@@ -13,7 +13,7 @@ openai.flush_cache(staging="dev")
 
 # Limits must have been set for the project.
 openai.set_project("hello")
-# openai.set_caching(False).
+# openai.set_caching(False)
 
 for _ in range(
     2
@@ -33,22 +33,23 @@ for _ in range(
     sleep(1)
 
 # Test streaming.
-try:  # openai v1
-    response = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": "Tell me a story in 10 words."}],
-        temperature=0,
-        stream=True,
-    )
-except AttributeError:  # openai v0
-    completion = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": "Tell me a story in 10 words."}],
-        temperature=0,
-        stream=True,
-    )
-
-for chunk in response:
-    if chunk.choices[0].delta.content:
-        print(chunk.choices[0].delta.content, end="")
-print()
+for _ in range(2):
+    try:  # openai v1
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "Tell me a story in 10 words."}],
+            temperature=0,
+            stream=True,
+        )
+    except AttributeError:  # openai v0
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "Tell me a story in 10 words."}],
+            temperature=0,
+            stream=True,
+        )
+    for chunk in response:
+        if chunk.choices[0].finish_reason is None:
+            print(chunk.choices[0].delta.content, end="")
+    print()
+    sleep(1)
