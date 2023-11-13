@@ -57,8 +57,9 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-resource "aws_lambda_function" "openai_proxy_dev" {
-  function_name = "openai-proxy-dev"
+resource "aws_lambda_function" "openai_proxy" {
+  for_each      = var.stages
+  function_name = "openai-proxy-${each.key}"
   role          = aws_iam_role.lambda_exec.arn
   image_uri     = module.openai_proxy.image_uri
   package_type  = "Image"
@@ -68,8 +69,8 @@ resource "aws_lambda_function" "openai_proxy_dev" {
   environment {
     variables = {
       ELASTICACHE    = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
-      OPENAI_API_KEY = var.openai_api_key_dev
-      OPENAI_ORG_ID  = var.openai_org_id_dev
+      OPENAI_API_KEY = each.value.openai_api_key
+      OPENAI_ORG_ID  = each.value.openai_org_id
     }
   }
 
@@ -78,31 +79,9 @@ resource "aws_lambda_function" "openai_proxy_dev" {
     security_group_ids = [aws_security_group.openai_lambda.id]
   }
 }
-
-resource "aws_lambda_function" "openai_proxy_prod" {
-  function_name = "openai-proxy-prod"
-  role          = aws_iam_role.lambda_exec.arn
-  image_uri     = module.openai_proxy.image_uri
-  package_type  = "Image"
-  timeout       = 600
-  publish       = true
-
-  environment {
-    variables = {
-      ELASTICACHE    = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
-      OPENAI_API_KEY = var.openai_api_key_prod
-      OPENAI_ORG_Id  = var.openai_org_id_prod
-    }
-  }
-
-  vpc_config {
-    subnet_ids         = module.vpc.private_subnets
-    security_group_ids = [aws_security_group.openai_lambda.id]
-  }
-}
-
-resource "aws_lambda_function" "openai_admin_dev" {
-  function_name = "openai-admin-dev"
+resource "aws_lambda_function" "openai_admin" {
+  for_each      = var.stages
+  function_name = "openai-admin-${each.key}"
   role          = aws_iam_role.lambda_exec.arn
   image_uri     = module.openai_admin.image_uri
   package_type  = "Image"
@@ -110,27 +89,6 @@ resource "aws_lambda_function" "openai_admin_dev" {
 
   environment {
     variables = {
-      STAGING     = "dev"
-      ELASTICACHE = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
-    }
-  }
-
-  vpc_config {
-    subnet_ids         = module.vpc.private_subnets
-    security_group_ids = [aws_security_group.openai_lambda.id]
-  }
-}
-
-resource "aws_lambda_function" "openai_admin_prod" {
-  function_name = "openai-admin-prod"
-  role          = aws_iam_role.lambda_exec.arn
-  image_uri     = module.openai_admin.image_uri
-  package_type  = "Image"
-  publish       = true
-
-  environment {
-    variables = {
-      STAGING     = "prod"
       ELASTICACHE = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
     }
   }
@@ -203,14 +161,9 @@ module "openai_admin" {
   })
 }
 
-resource "aws_lambda_function_url" "openai_proxy_dev" {
-  function_name      = aws_lambda_function.openai_proxy_dev.function_name
-  authorization_type = "AWS_IAM"
-  invoke_mode        = "RESPONSE_STREAM"
-}
-
-resource "aws_lambda_function_url" "openai_proxy_prod" {
-  function_name      = aws_lambda_function.openai_proxy_prod.function_name
+resource "aws_lambda_function_url" "openai_proxy" {
+  for_each           = var.stages
+  function_name      = aws_lambda_function.openai_proxy[each.key].function_name
   authorization_type = "AWS_IAM"
   invoke_mode        = "RESPONSE_STREAM"
 }

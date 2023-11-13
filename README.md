@@ -39,12 +39,19 @@ Ideally, you should have one OpenAI account per staging account (dev, prod). Cre
 ```terraform
 profile             = "default"   # AWS profile to use
 region              = "eu-west-2" # AWS region to deploy to
-openai_api_key_dev  = "sk-XXX"    # OpenAI API key for dev account
-openai_org_id_dev   = "org-XXX"   # OpenAI organization ID for dev account
-openai_api_key_prod = "sk-YYY"    # OpenAI API key for prod account
-openai_org_id_prod  = "org-YYY"   # OpenAI organization ID for prod account
 num_azs             = 3           # Number of availability zones to deploy to (limited by available Elastic IP addresses)
 use_elasticache     = true        # Whether to use ElastiCache Memcache
+
+stages = { # Staging accounts
+  "dev" = {
+    openai_api_key = "sk-XXX"
+    openai_org_id  = "org-XXX"
+  }
+  "prod" = {
+    openai_api_key = "sk-YYY"
+    openai_org_id  = "org-YYY"
+  }
+}
 ```
 
 To deploy run:

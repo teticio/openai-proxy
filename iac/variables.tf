@@ -6,20 +6,8 @@ variable "profile" {
   type = string
 }
 
-variable "openai_api_key_dev" {
-  type = string
-}
-
-variable "openai_org_id_dev" {
-  type = string
-}
-
-variable "openai_api_key_prod" {
-  type = string
-}
-
-variable "openai_org_id_prod" {
-  type = string
+variable "stages" {
+  type = map(object({ openai_api_key = string, openai_org_id = string }))
 }
 
 variable "num_azs" {

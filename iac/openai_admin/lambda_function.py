@@ -49,7 +49,7 @@ def lambda_handler(event, context):
         user=event.get("user", "*"),
         project=event.get("project"),
         model=event.get("model", "*"),
-        staging=os.environ["STAGING"],
+        staging=context.function_name.split("-")[-1],
         limit=event.get("limit"),
     )
     return {
@@ -58,13 +58,14 @@ def lambda_handler(event, context):
 
 
 if __name__ == "__main__":  # for testing
-    os.environ["STAGING"] = "dev"
     print(
         lambda_handler(
             {
                 "project": "hello",
                 "limit": 10,
             },
-            None,
+            {
+                "functionName": "openai-admin-dev"
+            },
         )
     )
