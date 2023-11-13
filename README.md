@@ -104,7 +104,7 @@ Alternatively, you can create a client using
 client = openai.OpenAIProxy(project="my-project", staging="dev", caching=True)
 ```
 
-If you want to use the proxy from somewhere other than Python, you can use the URL of the Lambda function in place of the OpenAI endpoint, provided you authenticate with AWS appropriately. In fact, you can even make the Lambda function URL public and restrict the access with CORS, so that it can be used directly in a front end application.
+If you want to use the proxy from somewhere other than Python, you can use the URL of the Lambda function in place of the OpenAI endpoint, provided you authenticate with AWS appropriately. In fact, you can even make the Lambda function URL public and restrict the access with CORS, so that it can be used directly in a frontend application.
 
 ## Admins
 
