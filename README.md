@@ -37,14 +37,14 @@ pip install .
 Ideally, you should have one OpenAI account per staging account (dev, prod). Create a `terraform.tfvars` file in the `iac` directory with the following variables:
 
 ```terraform
-profile                  = "default"   # AWS profile to use
-region                   = "eu-west-2" # AWS region to deploy to
-openai_api_key_dev       = "sk-XXX"    # OpenAI API key for dev account
-openai_organization_dev  = "org-XXX"   # OpenAI organization ID for dev account
-openai_api_key_prod      = "sk-YYY"    # OpenAI API key for prod account
-openai_organization_prod = "org-YYY"   # OpenAI organization ID for prod account
-num_azs                  = 3           # Number of availability zones to deploy to (limited by available Elastic IP addresses)
-use_elasticache          = true        # Whether to use ElastiCache Memcache
+profile             = "default"   # AWS profile to use
+region              = "eu-west-2" # AWS region to deploy to
+openai_api_key_dev  = "sk-XXX"    # OpenAI API key for dev account
+openai_org_id_dev   = "org-XXX"   # OpenAI organization ID for dev account
+openai_api_key_prod = "sk-YYY"    # OpenAI API key for prod account
+openai_org_id_prod  = "org-YYY"   # OpenAI organization ID for prod account
+num_azs             = 3           # Number of availability zones to deploy to (limited by available Elastic IP addresses)
+use_elasticache     = true        # Whether to use ElastiCache Memcache
 ```
 
 To deploy run:
@@ -56,7 +56,7 @@ terraform apply -auto-approve
 ```
 
 This will create
-- A Lambda function to proxy calls to the OpenAI API per staging account (dev, prod).
+- A streaming Lambda function URL to proxy calls to the OpenAI API per staging account (dev, prod).
 - A Lambda function to set usage limits and flush the cache per staging account (dev, prod).
 - A DynamoDB table to store usage and limits.
 - An optional ElastiCache Memcached cluster to cache OpenAI API responses.
@@ -69,7 +69,9 @@ In order to use the proxy in your Python code, provided you have the appropriate
 import openai_wrapi as openai
 ```
 
-You no longer need set the OpenAI API key or organization ID as these are securely stored in the corresponding Lambda functions. If you plan to use packages such as `langchain` which use the `openai` package internally, you need only ensure you have previously imported `openai_wrapi`.
+You no longer need set your OpenAI API key or organization ID as these are securely stored in the corresponding Lambda functions. Instead, you should set your `OPENAI_API_KEY` environment variable to be `sk-XXX`, where `XXX` corresponds to the URL `https://XXX.lambda-url.region.on.aws/` of your Lambda function, as output by Terraform.
+
+If you plan to use packages such as `langchain` which use the `openai` package internally, you need only ensure you have previously imported `openai_wrapi`.
 
 By default, the project associated with any API calls will be `N/A`. In order to set the project name:
 
@@ -77,11 +79,25 @@ By default, the project associated with any API calls will be `N/A`. In order to
 openai.set_project("my-project")
 ```
 
+To set the staging account:
+
+```python
+openai.set_staging("dev")
+```
+
 If you want to disable caching (enabled by default):
     
 ```python
 openai.set_caching(False)
 ```
+
+Alternatively, you can create a client using
+
+```python
+client = openai.OpenAIProxy(project="my-project", staging="dev", caching=True)
+```
+
+If you want to use the proxy from somewhere other than Python, you can use the URL of the Lambda function in place of the OpenAI endpoint, provided you authenticate with AWS appropriately. In fact, you can even make the Lambda function URL public and restrict the access with CORS, so that it can be used directly in a front end application.
 
 ## Admins
 
@@ -102,7 +118,7 @@ openai.set_limits(
 - flush the cache:
 
 ```python
-openai.flush_cache()
+openai.flush_cache(staging="dev")
 ```
 
 Note that this wrapper currently works for major versions 0 and 1 of the `openai` package.

@@ -1,6 +1,8 @@
+.vscode
 __pycache__
 openai_wrapi.egg-info
 dist
 .env
 .terraform*
 terraform.*
+node_modules

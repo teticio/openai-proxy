@@ -67,10 +67,9 @@ resource "aws_lambda_function" "openai_proxy_dev" {
 
   environment {
     variables = {
-      STAGING             = "dev"
-      ELASTICACHE         = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
-      OPENAI_API_KEY      = var.openai_api_key_dev
-      OPENAI_ORGANIZATION = var.openai_organization_dev
+      ELASTICACHE    = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
+      OPENAI_API_KEY = var.openai_api_key_dev
+      OPENAI_ORG_ID  = var.openai_org_id_dev
     }
   }
 
@@ -90,10 +89,9 @@ resource "aws_lambda_function" "openai_proxy_prod" {
 
   environment {
     variables = {
-      STAGING             = "prod"
-      ELASTICACHE         = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
-      OPENAI_API_KEY      = var.openai_api_key_prod
-      OPENAI_ORGANIZATION = var.openai_organization_prod
+      ELASTICACHE    = var.use_elasticache ? aws_elasticache_cluster.memcached[0].cluster_address : ""
+      OPENAI_API_KEY = var.openai_api_key_prod
+      OPENAI_ORG_Id  = var.openai_org_id_prod
     }
   }
 
@@ -151,8 +149,8 @@ module "openai_proxy" {
   platform        = "linux/amd64"
 
   image_tag = sha1(join("", [
-    filesha1("${path.module}/openai_proxy/requirements.txt"),
-    filesha1("${path.module}/openai_proxy/lambda_function.py"),
+    filesha1("${path.module}/openai_proxy/package.json"),
+    filesha1("${path.module}/openai_proxy/app.js"),
     filesha1("${path.module}/openai_proxy/Dockerfile")
   ]))
 
@@ -203,4 +201,16 @@ module "openai_admin" {
       }
     ]
   })
+}
+
+resource "aws_lambda_function_url" "openai_proxy_dev" {
+  function_name      = aws_lambda_function.openai_proxy_dev.function_name
+  authorization_type = "AWS_IAM"
+  invoke_mode        = "RESPONSE_STREAM"
+}
+
+resource "aws_lambda_function_url" "openai_proxy_prod" {
+  function_name      = aws_lambda_function.openai_proxy_prod.function_name
+  authorization_type = "AWS_IAM"
+  invoke_mode        = "RESPONSE_STREAM"
 }

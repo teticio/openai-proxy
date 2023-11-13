@@ -1,17 +1,18 @@
 [tool.poetry]
 name = "openai_wrapi"
-version = "0.0.5"
+version = "0.1.0"
 description = ""
 authors = ["Robert Dargavel Smith <teticio@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-openai = "^1.1.1"
+openai = "^1.2.3"
 boto3 = "^1.28.76"
 packaging = "^23.2"
 pandas = "^2.1.2"
 streamlit = "^1.28.1"
+requests-aws4auth = "^1.2.3"
 
 
 [build-system]
