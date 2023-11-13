@@ -37,10 +37,10 @@ pip install .
 Ideally, you should have one OpenAI account per staging account (dev, prod). Create a `terraform.tfvars` file in the `iac` directory with the following variables:
 
 ```terraform
-profile             = "default"   # AWS profile to use
-region              = "eu-west-2" # AWS region to deploy to
-num_azs             = 3           # Number of availability zones to deploy to (limited by available Elastic IP addresses)
-use_elasticache     = true        # Whether to use ElastiCache Memcache
+profile         = "default"   # AWS profile to use
+region          = "eu-west-2" # AWS region to deploy to
+num_azs         = 3           # Number of availability zones to deploy to (limited by available Elastic IP addresses)
+use_elasticache = true        # Whether to use ElastiCache Memcache
 
 stages = { # Staging accounts
   "dev" = {
