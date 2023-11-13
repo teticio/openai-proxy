@@ -14,15 +14,10 @@ assert (
 
 
 if major == 0:
-    from .proxy0 import (
-        _request_raw_proxy,
-        set_caching,
-        set_project,
-        set_staging,
-    )  # noqa: F401
+    from .proxy0 import set_caching  # noqa: F401
+    from .proxy0 import set_project  # noqa: F401
+    from .proxy0 import set_staging  # noqa: F401
 
-    # Monkey patch
-    openai_orig.api_requestor.APIRequestor.request_raw = _request_raw_proxy
     globals().update(vars(openai_orig))
     sys.modules["openai"] = sys.modules["openai_wrapi"]
 

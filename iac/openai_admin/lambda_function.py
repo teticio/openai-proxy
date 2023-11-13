@@ -64,8 +64,6 @@ if __name__ == "__main__":  # for testing
                 "project": "hello",
                 "limit": 10,
             },
-            {
-                "functionName": "openai-admin-dev"
-            },
+            {"functionName": "openai-admin-dev"},
         )
     )
