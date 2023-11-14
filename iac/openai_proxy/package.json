@@ -14,7 +14,8 @@
     "wrapper",
     "proxy",
     "openai-api",
-    "chatgpt"
+    "chatgpt",
+    "rbac"
   ],
   "author": "Robert Dargavel Smith",
   "license": "BSD-3-Clause",
