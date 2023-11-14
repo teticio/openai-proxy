@@ -98,10 +98,10 @@ If you want to disable caching (enabled by default):
 openai.set_caching(False)
 ```
 
-Alternatively, you can create a client using
+Alternatively, if you are using version 1.x.x of `openai`, you can create a client using
 
 ```python
-client = openai.OpenAIProxy(project="my-project", staging="dev", caching=True)
+client = openai.OpenAI(project="my-project", staging="dev", caching=True)
 ```
 
 It is also possible to set these parameters using environment variables:
@@ -112,7 +112,7 @@ os.environ["OPENAI_DEFAULT_STAGING"] = "dev"
 os.environ["OPENAI_DEFAULT_CACHING"] = "0"
 ```
 
-(Note that it is necessary to do this when using the latest version of `langchain`, which now explicitly creates a new OpenAI client.)
+(Note that it is necessary to do this when using `langchain` with version 1.x.x of `openai`, which explicitly creates a new OpenAI client.)
 
 If you want to use the proxy from somewhere other than Python, you can use the URL of the Lambda function in place of the OpenAI endpoint, provided you authenticate with AWS appropriately. In fact, you can even make the Lambda function URL public and restrict the access with CORS, so that it can be used directly in a frontend application.
 

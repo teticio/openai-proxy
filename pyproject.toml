@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "openai_wrapi"
-version = "0.1.4"
+version = "0.1.5"
 description = ""
 authors = ["Robert Dargavel Smith <teticio@gmail.com>"]
 readme = "README.md"
