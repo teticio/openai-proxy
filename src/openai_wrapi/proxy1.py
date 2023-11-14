@@ -42,10 +42,21 @@ class Proxy:
 
 class OpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], OpenAI, Proxy):
     def __init__(self, **kwargs):
+        proxy_kwargs = {
+            k: kwargs.pop(k)
+            for k in list(kwargs)
+            if k in ["project", "staging", "caching"]
+        }
         OpenAI.__init__(self, **kwargs)
-        Proxy.__init__(self, **kwargs)
+        Proxy.__init__(self, **proxy_kwargs)
+
 
 class AsyncOpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], AsyncOpenAI, Proxy):
     def __init__(self, **kwargs):
+        proxy_kwargs = {
+            k: kwargs.pop(k)
+            for k in list(kwargs)
+            if k in ["project", "staging", "caching"]
+        }
         AsyncOpenAI.__init__(self, **kwargs)
-        Proxy.__init__(self, **kwargs)
+        Proxy.__init__(self, **proxy_kwargs)
