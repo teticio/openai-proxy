@@ -145,6 +145,3 @@ To see the usage in a dashboard, run
 ```python
 streamlit run app.py
 ```
-
-## TODO
-- AsyncOpenAI

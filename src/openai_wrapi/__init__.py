@@ -14,15 +14,13 @@ assert (
 
 
 if major == 0:
-    from .proxy0 import set_caching  # noqa: F401
-    from .proxy0 import set_project  # noqa: F401
-    from .proxy0 import set_staging  # noqa: F401
+    from .proxy0 import set_caching, set_project, set_staging  # noqa: F401
 
     globals().update(vars(openai_orig))
     sys.modules["openai"] = sys.modules["openai_wrapi"]
 
 else:
-    from .proxy1 import OpenAIProxy
+    from .proxy1 import AsyncOpenAIProxy, OpenAIProxy
 
     globals().update(vars(openai_orig))
     sys.modules["openai"] = sys.modules["openai_wrapi"]
@@ -30,6 +28,7 @@ else:
     for attr in dir(client):
         if not attr.startswith("__"):
             globals()[attr] = getattr(client, attr)
-    OpenAI = OpenAIProxy
+    Client = OpenAI = OpenAIProxy
+    AsyncOpenAI = AsyncOpenAIProxy
 
 sys.modules["openai"] = sys.modules["openai_wrapi"]
