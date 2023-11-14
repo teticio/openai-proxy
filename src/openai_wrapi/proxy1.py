@@ -14,10 +14,6 @@ _DefaultStreamT = TypeVar("_DefaultStreamT", bound=Union[Stream[Any], AsyncStrea
 
 
 class BaseClientProxy(BaseClient[_HttpxClientT, _DefaultStreamT]):
-    custom_auth = get_aws_auth()
-
-
-class Proxy:
     def __init__(
         self,
         project: str = os.environ.get("OPENAI_DEFAULT_PROJECT", "N/A"),
@@ -39,8 +35,10 @@ class Proxy:
     def set_caching(self, caching: bool):
         self._custom_headers["openai-proxy-caching"] = str(int(caching))
 
+    custom_auth = get_aws_auth()
 
-class OpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], OpenAI, Proxy):
+
+class OpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], OpenAI):
     def __init__(self, **kwargs):
         proxy_kwargs = {
             k: kwargs.pop(k)
@@ -48,10 +46,10 @@ class OpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], OpenAI, Proxy):
             if k in ["project", "staging", "caching"]
         }
         OpenAI.__init__(self, **kwargs)
-        Proxy.__init__(self, **proxy_kwargs)
+        BaseClientProxy.__init__(self, **proxy_kwargs)
 
 
-class AsyncOpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], AsyncOpenAI, Proxy):
+class AsyncOpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], AsyncOpenAI):
     def __init__(self, **kwargs):
         proxy_kwargs = {
             k: kwargs.pop(k)
@@ -59,4 +57,4 @@ class AsyncOpenAIProxy(BaseClientProxy[httpx.Client, Stream[Any]], AsyncOpenAI, 
             if k in ["project", "staging", "caching"]
         }
         AsyncOpenAI.__init__(self, **kwargs)
-        Proxy.__init__(self, **proxy_kwargs)
+        BaseClientProxy.__init__(self, **proxy_kwargs)
