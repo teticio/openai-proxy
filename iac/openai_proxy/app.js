@@ -110,7 +110,7 @@ class BufferStream extends PassThrough {
 exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream, context) => {
     try {
         const body = JSON.parse(event.body);
-        let model = body.model? body.model : event.rawPath.match(/\/engines\/([^\/]+)/)[1];
+        let model = body.model ? body.model : event.rawPath.match(/\/engines\/([^\/]+)/)[1];
         if (!prices[model]) {
             model = model.substring(0, model.lastIndexOf('-'));
         }
@@ -182,15 +182,15 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
                 headers: httpResponse.headers,
             });
         } catch (error) {
-            console.error(error);
-            responseStream = awslambda.HttpResponseStream.from(responseStream, {
-                statusCode: error.response.status,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-            responseStream.write(JSON.stringify({ message: error.message }));
-            responseStream.end();
+            await pipeline(
+                error.response.data,
+                awslambda.HttpResponseStream.from(responseStream, {
+                    statusCode: error.response.status,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                }),
+            );
             return;
         }
 
@@ -272,7 +272,7 @@ if (require.main === module) { // For testing
             messages: [
                 { role: 'user', content: 'Tell me a story in 10 words' }
             ],
-            model: 'gpt-3.5-turbo-0613',
+            model: 'gpt-3.5-turbo',
             stream: true,
         }),
         headers: {
