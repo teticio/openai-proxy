@@ -138,6 +138,8 @@ openai.set_limits(
 openai.flush_cache(staging="dev")
 ```
 
+The prices for the OpenAI models can be set in the `iac/openai_proxy/prices.js` file.
+
 Note that this wrapper currently works for major versions 0 and 1 of the `openai` package.
 
 To see the usage in a dashboard, run

@@ -109,6 +109,7 @@ module "openai_proxy" {
   image_tag = sha1(join("", [
     filesha1("${path.module}/openai_proxy/package.json"),
     filesha1("${path.module}/openai_proxy/app.js"),
+    filesha1("${path.module}/openai_proxy/prices.js"),
     filesha1("${path.module}/openai_proxy/Dockerfile")
   ]))
 

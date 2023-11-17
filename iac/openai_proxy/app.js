@@ -9,20 +9,13 @@ const crypto = require('crypto');
 const pipeline = require('util').promisify(require('stream').pipeline);
 const { PassThrough } = require('stream');
 const { log } = require('console');
+const { prices } = require('./prices');
 
 const cacheEndpoint = process.env.ELASTICACHE || '';
 const cachePort = 11211;
 const memcachedClient = cacheEndpoint != '' ? new Memcached(`${cacheEndpoint}:${cachePort}`) : null;
 const TTL = 60 * 60 * 24; // 1 day
 const ddbClient = new DynamoDBClient();
-
-const prices = {
-    'gpt-3.5-turbo': [0.0015, 0.002],
-    'gpt-3.5-turbo-16k': [0.003, 0.004],
-    'gpt-3.5-turbo-instruct': [0.0015, 0.002],
-    'gpt-4': [0.03, 0.06],
-    'gpt-4-32k': [0.06, 0.12],
-};
 
 function calculateCost(model, inputTokens, outputTokens) {
     let price = prices[model] || [0, 0];
@@ -117,7 +110,7 @@ class BufferStream extends PassThrough {
 exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream, context) => {
     try {
         const body = JSON.parse(event.body);
-        let model = body.model;
+        let model = body.model? body.model : event.rawPath.match(/\/engines\/([^\/]+)/)[1];
         if (!prices[model]) {
             model = model.substring(0, model.lastIndexOf('-'));
         }
