@@ -185,9 +185,7 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
                 error.response.data,
                 awslambda.HttpResponseStream.from(responseStream, {
                     statusCode: error.response.status,
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: error.response.headers,
                 }),
             );
             return;
