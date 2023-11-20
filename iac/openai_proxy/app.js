@@ -187,15 +187,14 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
             return;
         }
 
-        responseStream = awslambda.HttpResponseStream.from(responseStream, {
-            statusCode: httpResponse.status,
-            headers: httpResponse.headers,
-        });
         bufferStream = new BufferStream();
         await pipeline(
             httpResponse.data,
             bufferStream,
-            responseStream,
+            awslambda.HttpResponseStream.from(responseStream, {
+                statusCode: httpResponse.status,
+                headers: httpResponse.headers,
+            }),
         );
 
         const buffer = bufferStream.getBuffer().toString();
