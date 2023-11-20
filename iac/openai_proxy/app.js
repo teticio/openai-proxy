@@ -8,7 +8,6 @@ const axios = require('axios');
 const crypto = require('crypto');
 const pipeline = require('util').promisify(require('stream').pipeline);
 const { PassThrough } = require('stream');
-const { log } = require('console');
 const { prices } = require('./prices');
 
 const cacheEndpoint = process.env.ELASTICACHE || '';
@@ -242,7 +241,7 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
                 if (err) {
                     reject(err);
                 } else {
-                    log('Cached');
+                    console.log('Cached');
                     resolve();
                 }
             }));
