@@ -79,6 +79,7 @@ resource "aws_lambda_function" "openai_proxy" {
     security_group_ids = [aws_security_group.openai_lambda.id]
   }
 }
+
 resource "aws_lambda_function" "openai_admin" {
   for_each      = var.stages
   function_name = "openai-admin-${each.key}"
