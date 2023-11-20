@@ -176,10 +176,6 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
                 responseType: 'stream',
                 timeout: 600 * 1000, // 10 minutes
             });
-            responseStream = awslambda.HttpResponseStream.from(responseStream, {
-                statusCode: httpResponse.status,
-                headers: httpResponse.headers,
-            });
         } catch (error) {
             await pipeline(
                 error.response.data,
@@ -191,6 +187,10 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
             return;
         }
 
+        responseStream = awslambda.HttpResponseStream.from(responseStream, {
+            statusCode: httpResponse.status,
+            headers: httpResponse.headers,
+        });
         bufferStream = new BufferStream();
         await pipeline(
             httpResponse.data,
