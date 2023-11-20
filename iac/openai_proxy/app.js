@@ -247,15 +247,12 @@ exports.lambdaHandler = awslambda.streamifyResponse(async (event, responseStream
 
     } catch (error) {
         console.error(error);
-        try {
-            responseStream = awslambda.HttpResponseStream.from(responseStream, {
-                statusCode: 500,
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            });
-        } catch (error) {
-        }
+        responseStream = awslambda.HttpResponseStream.from(responseStream, {
+            statusCode: 500,
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
         responseStream.write(JSON.stringify({ message: error.message, stack: error.stack }));
         responseStream.end();
         return;
