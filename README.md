@@ -10,7 +10,7 @@ This leads to a proliferation of API keys and users opening up a wider attack su
 
 Lastly, it is easy to make redundant calls to the API incurring unnecessary costs, especially when developing in an interactive environment such as a Jupyter notebook.
 
-\* The latest version of the OpenAI usage dashboard shows number of calls per user, but not cost.
+\* It is now possible to track API keys and export usage costs (activity) per key, however it is still not possible to limit usage costs per key.
 
 ## Solution
 
