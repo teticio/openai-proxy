@@ -2,6 +2,8 @@
 
 A drop-in wrapper to the `openai` package that tracks costs per user, project, model and staging account.
 
+Note: A more comprehensive solution is available from [https://trybricks.ai/](BricksLLM). It has rate limits per API key and the paid service includes a dashboard.
+
 ## Problem statement
 
 OpenAI does not currently provide any way to monitor or limit API usage costs by user*, project or model. In fact, there is no concept of "project", only users (which correspond to email addresses), organizations (which correspond to OpenAI accounts and must be individually funded) and API keys (which can be used interchangeably across any organizations to which a user belongs).
