@@ -2,7 +2,7 @@
 
 A drop-in wrapper to the `openai` package that tracks costs per user, project, model and staging account.
 
-Note: A more comprehensive solution is available from [BricksLLM](https://trybricks.ai/). It has rate limits per API key and the paid service includes a dashboard.
+Note: A more comprehensive solution [BricksLLM](https://github.com/bricks-cloud/BricksLLM) is available from [trybricks.ai](https://trybricks.ai/). It has rate limits per API key and the paid service includes a dashboard.
 
 ## Problem statement
 
